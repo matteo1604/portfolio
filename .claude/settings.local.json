@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp:*)",
+      "Bash(npx:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(git add:*)"
+    ]
+  }
+}

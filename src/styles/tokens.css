@@ -1,0 +1,47 @@
+/* =============================================================
+   DESIGN TOKENS — CSS custom properties only. No component styles.
+   ============================================================= */
+
+:root {
+  /* ── Colors ─────────────────────────────────────────────── */
+  --bg-primary: #0a0a0b;
+  --bg-elevated: #141416;
+  --bg-surface: #1a1a1f;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(0, 212, 255, 0.2);
+  --text-primary: #e8e8ec;
+  --text-secondary: #6b6b76;
+  --accent: #00d4ff;
+  --accent-dim: rgba(0, 212, 255, 0.15);
+  --accent-glow: rgba(0, 212, 255, 0.4);
+
+  /* ── Typography — Font families ─────────────────────────── */
+  --font-display: 'Clash Display', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* ── Typography — Scale ──────────────────────────────────── */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 2rem;      /* 32px */
+  --text-4xl: 2.5rem;    /* 40px */
+  --text-5xl: 3.5rem;    /* 56px */
+  --text-hero: clamp(3rem, 8vw, 6rem);
+
+  /* ── Spacing ─────────────────────────────────────────────── */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 2rem;
+  --space-xl: 4rem;
+  --space-2xl: 8rem;
+  --space-section: clamp(6rem, 15vh, 10rem);
+
+  /* ── Scroll state (written by GSAP/Lenis, read by components) */
+  --scroll-progress: 0;
+  --scroll-velocity: 0;
+}
