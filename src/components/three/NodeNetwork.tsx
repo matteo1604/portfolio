@@ -2,18 +2,20 @@ import { useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 
-const NODE_COUNT = 120
+const NODE_COUNT = 150
 const BOUNDS = 14
-const CONNECTION_DISTANCE = 4.5
+const CONNECTION_DISTANCE = 5
 const FLOAT_SPEED = 0.18
 const MOUSE_INFLUENCE_RADIUS = 3.5
 const MOUSE_STRENGTH = 0.4
+const DRIFT_SPEED = 0.02
 
 interface NodeData {
   position: THREE.Vector3
   velocity: THREE.Vector3
   phase: number
   phaseSpeed: number
+  radius: number
 }
 
 function buildConnections(positions: Float32Array, nodeCount: number): { indices: number[]; distances: number[] } {
@@ -37,7 +39,8 @@ function buildConnections(positions: Float32Array, nodeCount: number): { indices
 }
 
 export function NodeNetwork() {
-  const { pointer, viewport } = useThree()
+  const { pointer, viewport, camera } = useThree()
+  const groupRef = useRef<THREE.Group>(null)
 
   // Node data stored in refs — no React state for frame-level updates
   const nodesRef = useRef<NodeData[]>([])
@@ -75,6 +78,7 @@ export function NodeNetwork() {
         ),
         phase: rng() * Math.PI * 2,
         phaseSpeed: 0.3 + rng() * 0.7,
+        radius: 0.03 + rng() * 0.07,
       })
     }
 
@@ -85,6 +89,11 @@ export function NodeNetwork() {
     connectionDistancesRef.current = distances
 
     return arr
+  }, [])
+
+  // Per-node sphere geometries with varied radii
+  const sphereGeometries = useMemo(() => {
+    return nodesRef.current.map((node) => new THREE.SphereGeometry(node.radius, 6, 6))
   }, [])
 
   // Geometry for the line segments
@@ -101,6 +110,11 @@ export function NodeNetwork() {
     const nodes = nodesRef.current
     if (!nodes.length) return
 
+    // Slow drift rotation on the group
+    if (groupRef.current) {
+      groupRef.current.rotation.y += DRIFT_SPEED * delta
+    }
+
     // Read scroll progress from CSS var
     const rawProgress = parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--hero-progress') || '0'
@@ -112,6 +126,7 @@ export function NodeNetwork() {
     const mouseY = pointer.y * (viewport.height / 2)
 
     const t = performance.now() * 0.001
+    const camZ = camera.position.z
 
     // Update node positions
     for (let i = 0; i < NODE_COUNT; i++) {
@@ -152,9 +167,11 @@ export function NodeNetwork() {
       const mesh = sphereRefs.current[i]
       if (mesh) {
         mesh.position.copy(node.position)
-        // Opacity controlled via scroll
+        // Depth-of-field: nodes farther from camera have lower opacity
+        const distFromCam = Math.abs(camZ - node.position.z)
+        const depthFade = Math.max(0.15, 1 - (distFromCam / (camZ + BOUNDS * 0.4)) * 0.7)
         const material = mesh.material as THREE.MeshBasicMaterial
-        material.opacity = Math.max(0, 1 - scrollProgress * 1.5)
+        material.opacity = Math.max(0, depthFade * (1 - scrollProgress * 1.5))
       }
     }
 
@@ -187,19 +204,19 @@ export function NodeNetwork() {
         const dyA = nodes[iA].position.y - mouseY
         const distAToMouse = Math.sqrt(dxA * dxA + dyA * dyA)
         const mouseFactor = distAToMouse < MOUSE_INFLUENCE_RADIUS
-          ? (1 - distAToMouse / MOUSE_INFLUENCE_RADIUS) * 0.8
+          ? (1 - distAToMouse / MOUSE_INFLUENCE_RADIUS) * 1.0
           : 0
 
-        const baseAlpha = (1 - dist / CONNECTION_DISTANCE) * 0.25 + mouseFactor * 0.5
+        const baseAlpha = (1 - dist / CONNECTION_DISTANCE) * 0.25 + mouseFactor * 0.7
         const alpha = Math.max(0, baseAlpha * (1 - scrollProgress * 1.5))
 
         // Cyan color: #00D4FF = (0, 0.831, 1)
         colorAttr.array[segIdx] = 0
-        colorAttr.array[segIdx + 1] = 0.831 * alpha * 4
-        colorAttr.array[segIdx + 2] = 1.0 * alpha * 4
+        colorAttr.array[segIdx + 1] = 0.831 * alpha * 5
+        colorAttr.array[segIdx + 2] = 1.0 * alpha * 5
         colorAttr.array[segIdx + 3] = 0
-        colorAttr.array[segIdx + 4] = 0.831 * alpha * 4
-        colorAttr.array[segIdx + 5] = 1.0 * alpha * 4
+        colorAttr.array[segIdx + 4] = 0.831 * alpha * 5
+        colorAttr.array[segIdx + 5] = 1.0 * alpha * 5
       }
 
       posAttr.needsUpdate = true
@@ -207,10 +224,8 @@ export function NodeNetwork() {
     }
   })
 
-  const sphereGeometry = useMemo(() => new THREE.SphereGeometry(0.06, 6, 6), [])
-
   return (
-    <group>
+    <group ref={groupRef}>
       {/* Line connections */}
       <lineSegments ref={lineRef} geometry={lineGeometry} frustumCulled={false}>
         <lineBasicMaterial vertexColors transparent opacity={1} />
@@ -226,7 +241,7 @@ export function NodeNetwork() {
             initialPositions[i * 3 + 1],
             initialPositions[i * 3 + 2],
           ]}
-          geometry={sphereGeometry}
+          geometry={sphereGeometries[i]}
           frustumCulled={true}
         >
           <meshBasicMaterial

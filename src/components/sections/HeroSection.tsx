@@ -16,6 +16,7 @@ export function HeroSection() {
   const subtitleRef = useRef<HTMLParagraphElement>(null)
   const taglineRef = useRef<HTMLParagraphElement>(null)
   const scrollIndicatorRef = useRef<HTMLDivElement>(null)
+  const scrollLineRef = useRef<HTMLDivElement>(null)
 
   const prefersReducedMotion = usePrefersReducedMotion()
 
@@ -26,42 +27,40 @@ export function HeroSection() {
         // Reduced motion: instant fade in, no transforms
         gsap.set(
           [overlayRef.current, nameRef.current, subtitleRef.current, taglineRef.current, scrollIndicatorRef.current],
-          { opacity: 1, y: 0, scale: 1 },
+          { opacity: 1, y: 0, clipPath: 'inset(0 0% 0 0)' },
         )
         return
       }
 
-      const tl = gsap.timeline({ delay: 0.2 })
+      const tl = gsap.timeline({ delay: 0.5 })
 
-      // Container: scale 0.95 → 1, opacity 0 → 1
+      // Container fade in
       tl.fromTo(
         overlayRef.current,
-        { scale: 0.95, opacity: 0 },
+        { opacity: 0 },
         {
-          scale: 1,
           opacity: 1,
           duration: DURATION.dramatic,
           ease: `cubic-bezier(${EASING.dramatic.join(',')})`,
         },
       )
 
-      // Name: fade up
+      // Name: clip-path reveal left to right
       tl.fromTo(
         nameRef.current,
-        { opacity: 0, y: 32 },
+        { clipPath: 'inset(0 100% 0 0)', opacity: 1 },
         {
-          opacity: 1,
-          y: 0,
+          clipPath: 'inset(0 0% 0 0)',
           duration: DURATION.dramatic,
           ease: `cubic-bezier(${EASING.dramatic.join(',')})`,
         },
-        '-=1.0',
+        '-=0.8',
       )
 
       // Subtitle + tagline: staggered fade up
       tl.fromTo(
         [subtitleRef.current, taglineRef.current],
-        { opacity: 0, y: 20 },
+        { opacity: 0, y: 30 },
         {
           opacity: 1,
           y: 0,
@@ -83,6 +82,21 @@ export function HeroSection() {
         },
         '-=0.3',
       )
+
+      // Scroll line loop animation
+      if (scrollLineRef.current) {
+        gsap.fromTo(
+          scrollLineRef.current,
+          { scaleY: 0, transformOrigin: 'top center' },
+          {
+            scaleY: 1,
+            duration: 1.2,
+            repeat: -1,
+            ease: 'power2.inOut',
+            yoyo: true,
+          },
+        )
+      }
     },
     { scope: sectionRef, dependencies: [prefersReducedMotion] },
   )
@@ -143,7 +157,7 @@ export function HeroSection() {
           zIndex: 1,
         }}
       >
-        {/* Glassmorphism overlay */}
+        {/* Glassmorphism overlay — full-screen, nearly transparent */}
         <div
           ref={overlayRef}
           style={{
@@ -152,15 +166,13 @@ export function HeroSection() {
             flexDirection: 'column',
             alignItems: 'center',
             textAlign: 'center',
-            gap: '1rem',
+            gap: '1.25rem',
             padding: 'clamp(2rem, 5vw, 4rem) clamp(2.5rem, 6vw, 5rem)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            background: 'rgba(10, 10, 11, 0.55)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: '1.25rem',
-            maxWidth: '700px',
-            width: '90%',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            background: 'rgba(10, 10, 11, 0.3)',
+            maxWidth: '900px',
+            width: '100%',
           }}
         >
           {/* Name */}
@@ -168,13 +180,16 @@ export function HeroSection() {
             ref={nameRef}
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 'var(--text-hero)',
+              fontSize: 'clamp(3.5rem, 10vw, 7rem)',
               fontWeight: 700,
-              letterSpacing: '-0.02em',
+              letterSpacing: '-0.03em',
               color: 'var(--text-primary)',
               lineHeight: 1.05,
               opacity: 0,
               margin: 0,
+              textShadow: '0 0 60px rgba(0,212,255,0.15)',
+              paddingBottom: '0.75rem',
+              borderBottom: '1px solid rgba(0,212,255,0.15)',
             }}
           >
             Matteo Raineri
@@ -185,8 +200,10 @@ export function HeroSection() {
             ref={subtitleRef}
             style={{
               fontFamily: 'var(--font-body)',
-              fontSize: 'var(--text-lg)',
+              fontSize: 'var(--text-xl)',
               fontWeight: 400,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
               color: 'var(--text-secondary)',
               opacity: 0,
               margin: 0,
@@ -211,7 +228,7 @@ export function HeroSection() {
           </p>
         </div>
 
-        {/* Scroll indicator — Framer Motion for hover only */}
+        {/* Scroll indicator — animated line + text */}
         <div
           ref={scrollIndicatorRef}
           style={{
@@ -230,7 +247,7 @@ export function HeroSection() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '0.5rem',
+              gap: '0.75rem',
               cursor: 'pointer',
             }}
             onClick={() => {
@@ -240,49 +257,26 @@ export function HeroSection() {
           >
             <span
               style={{
-                fontFamily: 'var(--font-body)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 'var(--text-xs)',
-                letterSpacing: '0.12em',
+                letterSpacing: '2px',
                 textTransform: 'uppercase',
                 color: 'var(--text-secondary)',
               }}
             >
-              Scorri
+              scroll
             </span>
 
-            {/* Animated bounce arrow */}
-            <motion.div
-              animate={prefersReducedMotion ? {} : { y: [0, 6, 0] }}
-              transition={{
-                duration: 1.6,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
+            {/* Animated vertical line */}
+            <div
+              ref={scrollLineRef}
               style={{
-                width: '1.5rem',
-                height: '1.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                width: '1px',
+                height: '40px',
+                background: 'var(--accent)',
+                opacity: 0.6,
               }}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path
-                  d="M8 2L8 13M8 13L3 8M8 13L13 8"
-                  stroke="var(--accent)"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </motion.div>
+            />
           </motion.div>
         </div>
       </section>

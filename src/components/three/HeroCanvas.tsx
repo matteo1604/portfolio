@@ -1,4 +1,5 @@
 import { Canvas } from '@react-three/fiber'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import { NodeNetwork } from './NodeNetwork'
 
 /**
@@ -28,6 +29,13 @@ export function HeroCanvas() {
         style={{ width: '100%', height: '100%' }}
       >
         <NodeNetwork />
+        <EffectComposer>
+          <Bloom
+            intensity={0.8}
+            luminanceThreshold={0.2}
+            luminanceSmoothing={0.9}
+          />
+        </EffectComposer>
       </Canvas>
     </div>
   )

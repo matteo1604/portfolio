@@ -8,7 +8,8 @@
       "Bash(echo \"EXIT: $?\")",
       "Bash(curl -s http://localhost:5173)",
       "Bash(echo \"Exit code: $?\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
