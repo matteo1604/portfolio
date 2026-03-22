@@ -2,10 +2,10 @@ import { useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 
-const NODE_COUNT = 150
-const BOUNDS = 14
+const NODE_COUNT = 80
+const BOUNDS = 18
 const CONNECTION_DISTANCE = 5
-const FLOAT_SPEED = 0.18
+const FLOAT_SPEED = 0.08
 const MOUSE_INFLUENCE_RADIUS = 3.5
 const MOUSE_STRENGTH = 0.4
 const DRIFT_SPEED = 0.02
@@ -62,9 +62,15 @@ export function NodeNetwork() {
     const nodes: NodeData[] = []
 
     for (let i = 0; i < NODE_COUNT; i++) {
-      const x = (rng() - 0.5) * BOUNDS * 2
+      let x = (rng() - 0.5) * BOUNDS * 2
       const y = (rng() - 0.5) * BOUNDS * 1.2
       const z = (rng() - 0.5) * BOUNDS * 0.6
+
+      // Push nodes away from center to leave clear zone for text
+      if (Math.abs(x) < 4 && Math.abs(y) < 3) {
+        x *= 2.5
+      }
+
       arr[i * 3] = x
       arr[i * 3 + 1] = y
       arr[i * 3 + 2] = z
@@ -78,7 +84,7 @@ export function NodeNetwork() {
         ),
         phase: rng() * Math.PI * 2,
         phaseSpeed: 0.3 + rng() * 0.7,
-        radius: 0.03 + rng() * 0.07,
+        radius: 0.035,
       })
     }
 
@@ -91,10 +97,7 @@ export function NodeNetwork() {
     return arr
   }, [])
 
-  // Per-node sphere geometries with varied radii
-  const sphereGeometries = useMemo(() => {
-    return nodesRef.current.map((node) => new THREE.SphereGeometry(node.radius, 6, 6))
-  }, [])
+  const sphereGeometry = useMemo(() => new THREE.SphereGeometry(0.035, 6, 6), [])
 
   // Geometry for the line segments
   const lineGeometry = useMemo(() => {
@@ -132,7 +135,7 @@ export function NodeNetwork() {
     for (let i = 0; i < NODE_COUNT; i++) {
       const node = nodes[i]
 
-      // Organic floating motion
+      // Organic floating motion — slow, breathing rhythm
       const floatX = Math.sin(t * FLOAT_SPEED * node.phaseSpeed + node.phase) * 0.012
       const floatY = Math.cos(t * FLOAT_SPEED * node.phaseSpeed * 0.7 + node.phase + 1.2) * 0.012
       const floatZ = Math.sin(t * FLOAT_SPEED * node.phaseSpeed * 0.4 + node.phase + 2.4) * 0.006
@@ -171,7 +174,7 @@ export function NodeNetwork() {
         const distFromCam = Math.abs(camZ - node.position.z)
         const depthFade = Math.max(0.15, 1 - (distFromCam / (camZ + BOUNDS * 0.4)) * 0.7)
         const material = mesh.material as THREE.MeshBasicMaterial
-        material.opacity = Math.max(0, depthFade * (1 - scrollProgress * 1.5))
+        material.opacity = Math.max(0, depthFade * 0.4 * (1 - scrollProgress * 1.5))
       }
     }
 
@@ -199,15 +202,15 @@ export function NodeNetwork() {
         posAttr.array[segIdx + 4] = pB.y
         posAttr.array[segIdx + 5] = pB.z
 
-        // Brightness based on proximity and mouse influence
+        // Soft mouse glow — gradual falloff
         const dxA = nodes[iA].position.x - mouseX
         const dyA = nodes[iA].position.y - mouseY
         const distAToMouse = Math.sqrt(dxA * dxA + dyA * dyA)
         const mouseFactor = distAToMouse < MOUSE_INFLUENCE_RADIUS
-          ? (1 - distAToMouse / MOUSE_INFLUENCE_RADIUS) * 1.0
+          ? (1 - distAToMouse / MOUSE_INFLUENCE_RADIUS) * 0.3
           : 0
 
-        const baseAlpha = (1 - dist / CONNECTION_DISTANCE) * 0.25 + mouseFactor * 0.7
+        const baseAlpha = (1 - dist / CONNECTION_DISTANCE) * 0.12 + mouseFactor * 0.3
         const alpha = Math.max(0, baseAlpha * (1 - scrollProgress * 1.5))
 
         // Cyan color: #00D4FF = (0, 0.831, 1)
@@ -241,13 +244,13 @@ export function NodeNetwork() {
             initialPositions[i * 3 + 1],
             initialPositions[i * 3 + 2],
           ]}
-          geometry={sphereGeometries[i]}
+          geometry={sphereGeometry}
           frustumCulled={true}
         >
           <meshBasicMaterial
             color="#00D4FF"
             transparent
-            opacity={0.85}
+            opacity={0.4}
           />
         </mesh>
       ))}

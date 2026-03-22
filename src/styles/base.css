@@ -77,6 +77,21 @@ img, video {
   display: block;
 }
 
+/* ── Hero accents ──────────────────────────────────────────── */
+.accent {
+  color: var(--accent);
+  text-shadow: 0 0 30px var(--accent-glow);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.hero-cursor {
+  animation: blink 1s step-end infinite;
+}
+
 /* ── Reduced motion ─────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
