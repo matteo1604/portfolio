@@ -1,5 +1,4 @@
 import { useRef } from 'react'
-import { motion } from 'framer-motion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@/hooks/useGSAP'
@@ -9,128 +8,89 @@ import { HeroCanvas } from '@/components/three/HeroCanvas'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const TECH_STACK = ['React', 'TypeScript', 'Three.js', 'GSAP', 'Tailwind'] as const
-const ROLE_TEXT = 'Frontend Developer & Creative Engineer'
-const RAINERI_CHARS = 'Raineri'.split('')
+const RAINERI_CHARS = 'RAINERI'.split('')
+const TECH = ['React', 'TypeScript', 'Three.js', 'GSAP', 'Tailwind']
 
 export function HeroSection() {
-  const sectionRef = useRef<HTMLElement>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
-  const topGroupRef = useRef<HTMLDivElement>(null)
-  const prompt1Ref = useRef<HTMLDivElement>(null)
-  const roleRef = useRef<HTMLDivElement>(null)
-  const matteoRef = useRef<HTMLSpanElement>(null)
-  const nameRef = useRef<HTMLHeadingElement>(null)
+  const sectionRef   = useRef<HTMLElement>(null)
+  const topBarRef    = useRef<HTMLDivElement>(null)
+  const matteoRef    = useRef<HTMLDivElement>(null)
+  const dividerRef   = useRef<HTMLDivElement>(null)
+  const nameRef      = useRef<HTMLHeadingElement>(null)
   const raineriCharRefs = useRef<(HTMLSpanElement | null)[]>([])
-  const prompt2Ref = useRef<HTMLDivElement>(null)
-  const descBlockRef = useRef<HTMLDivElement>(null)
+  const bottomRef    = useRef<HTMLDivElement>(null)
   const scrollIndicatorRef = useRef<HTMLDivElement>(null)
-  const scrollLineRef = useRef<HTMLDivElement>(null)
+  const scrollLineRef      = useRef<HTMLDivElement>(null)
 
   const prefersReducedMotion = usePrefersReducedMotion()
 
-  // ── Entry animation timeline ─────────────────────────────────
+  // ── Entry timeline ────────────────────────────────────────────
   useGSAP(
     () => {
       if (prefersReducedMotion) {
-        const roleChars = roleRef.current?.querySelectorAll('span')
         gsap.set(
-          [
-            prompt1Ref.current,
-            roleRef.current,
-            matteoRef.current,
-            prompt2Ref.current,
-            descBlockRef.current,
-            scrollIndicatorRef.current,
-          ],
+          [topBarRef.current, matteoRef.current, dividerRef.current,
+           bottomRef.current, scrollIndicatorRef.current],
           { opacity: 1 },
         )
-        if (roleChars) gsap.set(roleChars, { opacity: 1 })
+        gsap.set(dividerRef.current, { scaleX: 1 })
         gsap.set(raineriCharRefs.current.filter(Boolean), { clipPath: 'inset(0% 0 0 0)' })
         return
       }
 
-      const tl = gsap.timeline({ delay: 0.5 })
+      const tl = gsap.timeline({ delay: 0.3 })
 
-      // t=0.0 — prompt whoami
-      tl.fromTo(
-        prompt1Ref.current,
+      // t=0.0 — top bar
+      tl.fromTo(topBarRef.current,
         { opacity: 0 },
-        { opacity: 1, duration: 0.4, ease: 'power2.out' },
+        { opacity: 1, duration: 0.5, ease: 'power2.out' },
         0,
       )
 
-      // t=0.5 — role typing (chars individuali)
-      const roleChars = roleRef.current
-        ? Array.from(roleRef.current.querySelectorAll('span'))
-        : []
-      tl.set(roleRef.current, { opacity: 1 }, 0.5)
-      tl.fromTo(
-        roleChars,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.01, stagger: 0.025, ease: 'none' },
-        0.5,
+      // t=0.3 — MATTEO slide from right (è right-aligned, esce dalla destra)
+      tl.fromTo(matteoRef.current,
+        { opacity: 0, x: 24 },
+        { opacity: 1, x: 0, duration: 0.7, ease: `cubic-bezier(${EASING.smooth.join(',')})` },
+        0.3,
       )
 
-      // t=1.4 — Matteo fade-up
-      tl.fromTo(
-        matteoRef.current,
-        { opacity: 0, y: 20 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.5,
-          ease: `cubic-bezier(${EASING.smooth.join(',')})`,
-        },
-        1.4,
+      // t=0.7 — divider scaleX da sinistra
+      tl.fromTo(dividerRef.current,
+        { scaleX: 0, transformOrigin: 'left center' },
+        { scaleX: 1, duration: 0.9, ease: `cubic-bezier(${EASING.dramatic.join(',')})` },
+        0.7,
       )
 
-      // t=1.7 — Raineri char-split
+      // t=1.1 — RAINERI char-split dal basso
       tl.fromTo(
         raineriCharRefs.current.filter(Boolean),
         { clipPath: 'inset(100% 0 0 0)' },
         {
           clipPath: 'inset(0% 0 0 0)',
           duration: DURATION.slow,
-          stagger: 0.04,
+          stagger: 0.06,
           ease: `cubic-bezier(${EASING.dramatic.join(',')})`,
         },
-        1.7,
+        1.1,
       )
 
-      // t=2.8 — prompt mission
-      tl.fromTo(
-        prompt2Ref.current,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.4, ease: 'power2.out' },
-        2.8,
+      // t=2.3 — bottom content fade-up
+      tl.fromTo(bottomRef.current,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.8, ease: `cubic-bezier(${EASING.smooth.join(',')})` },
+        2.3,
       )
 
-      // t=3.1 — description block
-      tl.fromTo(
-        descBlockRef.current,
-        { opacity: 0, y: 24 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.8,
-          ease: `cubic-bezier(${EASING.dramatic.join(',')})`,
-        },
-        3.1,
-      )
-
-      // t=4.0 — scroll indicator
-      tl.fromTo(
-        scrollIndicatorRef.current,
+      // t=3.1 — scroll indicator
+      tl.fromTo(scrollIndicatorRef.current,
         { opacity: 0 },
         { opacity: 1, duration: 0.6, ease: 'power2.out' },
-        4.0,
+        3.1,
       )
 
       // Scroll line loop
       if (scrollLineRef.current) {
-        gsap.fromTo(
-          scrollLineRef.current,
+        gsap.fromTo(scrollLineRef.current,
           { scaleY: 0.4, opacity: 0.2, transformOrigin: 'top center' },
           { scaleY: 1, opacity: 0.8, duration: 2.2, repeat: -1, yoyo: true, ease: 'power2.inOut' },
         )
@@ -139,12 +99,11 @@ export function HeroSection() {
     { scope: sectionRef, dependencies: [prefersReducedMotion] },
   )
 
-  // ── Scroll exit stratificato ─────────────────────────────────
+  // ── Scroll exit stratificato ──────────────────────────────────
   useGSAP(
     () => {
       if (!sectionRef.current) return
 
-      // Scrive --hero-progress (usato dal NodeNetwork)
       ScrollTrigger.create({
         trigger: sectionRef.current,
         start: 'top top',
@@ -160,61 +119,40 @@ export function HeroSection() {
 
       if (prefersReducedMotion) return
 
-      // Scroll indicator — esce per primo
+      // Scroll indicator — scompare subito
       gsap.to(scrollIndicatorRef.current, {
         opacity: 0,
-        ease: 'power2.in',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: '8% top',
-          scrub: true,
-        },
+        scrollTrigger: { trigger: sectionRef.current, start: 'top top', end: '8% top', scrub: true },
       })
 
-      // Prompt + role — escono velocemente
-      gsap.to(topGroupRef.current, {
-        opacity: 0,
-        y: -60,
-        ease: 'power2.in',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: '25% top',
-          scrub: true,
-        },
+      // Top bar — su e via
+      gsap.to(topBarRef.current, {
+        opacity: 0, y: -16,
+        scrollTrigger: { trigger: sectionRef.current, start: 'top top', end: '18% top', scrub: true },
       })
 
-      // Prompt2 + description block — escono insieme
-      gsap.to([prompt2Ref.current, descBlockRef.current], {
-        opacity: 0,
-        y: -50,
-        ease: 'power2.in',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: '5% top',
-          end: '35% top',
-          scrub: true,
-        },
+      // MATTEO + divider — escono verso destra
+      gsap.to([matteoRef.current, dividerRef.current], {
+        opacity: 0, x: 40,
+        scrollTrigger: { trigger: sectionRef.current, start: '3% top', end: '28% top', scrub: true },
       })
 
-      // Nome — esce per ultimo, spostamento minore
+      // Bottom — fade-up
+      gsap.to(bottomRef.current, {
+        opacity: 0, y: -36,
+        scrollTrigger: { trigger: sectionRef.current, start: '5% top', end: '32% top', scrub: true },
+      })
+
+      // RAINERI — esce per ultimo, drift minimo
       gsap.to(nameRef.current, {
-        opacity: 0,
-        y: -30,
-        ease: 'power2.in',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: '40% top',
-          scrub: true,
-        },
+        opacity: 0, y: -24,
+        scrollTrigger: { trigger: sectionRef.current, start: 'top top', end: '42% top', scrub: true },
       })
     },
     { scope: sectionRef, dependencies: [prefersReducedMotion] },
   )
 
-  // ── Mouse parallax ───────────────────────────────────────────
+  // ── Mouse parallax ────────────────────────────────────────────
   useGSAP(
     () => {
       if (prefersReducedMotion) return
@@ -223,28 +161,20 @@ export function HeroSection() {
         const nx = e.clientX / window.innerWidth - 0.5
         const ny = e.clientY / window.innerHeight - 0.5
 
-        gsap.to(topGroupRef.current, {
-          x: nx * 14,
-          y: ny * 8,
-          duration: 1.2,
-          ease: 'power2.out',
-          overwrite: 'auto',
+        // MATTEO si muove in direzione OPPOSTA a RAINERI — tensione spaziale
+        gsap.to(matteoRef.current, {
+          x: -nx * 22, y: ny * 7,
+          duration: 1.4, ease: 'power2.out', overwrite: 'auto',
         })
-
+        // RAINERI — focal point, movimento massimo
         gsap.to(nameRef.current, {
-          x: nx * 28,
-          y: ny * 16,
-          duration: 1.4,
-          ease: 'power2.out',
-          overwrite: 'auto',
+          x: nx * 26, y: ny * 13,
+          duration: 1.6, ease: 'power2.out', overwrite: 'auto',
         })
-
-        gsap.to(descBlockRef.current, {
-          x: nx * 18,
-          y: ny * 10,
-          duration: 1.3,
-          ease: 'power2.out',
-          overwrite: 'auto',
+        // Bottom — segue leggermente
+        gsap.to(bottomRef.current, {
+          x: nx * 11, y: ny * 7,
+          duration: 1.3, ease: 'power2.out', overwrite: 'auto',
         })
       }
 
@@ -262,181 +192,219 @@ export function HeroSection() {
         ref={sectionRef}
         id="hero"
         aria-label="Hero"
-        className="relative z-[1] flex min-h-screen items-center"
-        style={{ padding: '0 clamp(32px, 5vw, 80px)' }}
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          minHeight: '100svh',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: 'clamp(20px, 3.5vw, 48px)',
+          overflow: 'hidden',
+        }}
       >
-        <div ref={contentRef} className="flex w-full max-w-[1200px] flex-col">
 
-          {/* Gruppo top: prompt whoami + risposta role */}
-          <div ref={topGroupRef} className="mb-4 flex flex-col gap-1.5">
-            <div ref={prompt1Ref} className="flex items-center gap-2 opacity-0">
-              <span className="font-mono text-sm" style={{ color: 'var(--accent)' }}>→</span>
-              <span className="font-mono text-sm" style={{ color: 'var(--text-secondary)' }}>whoami</span>
-            </div>
+        {/* ── Top bar: index + anno ─────────────────────────────── */}
+        <div
+          ref={topBarRef}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            opacity: 0,
+          }}
+        >
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--text-xs)',
+            color: 'var(--text-secondary)',
+            letterSpacing: '0.12em',
+          }}>
+            ○ 01
+          </span>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--text-xs)',
+            color: 'var(--text-secondary)',
+            letterSpacing: '0.12em',
+          }}>
+            MMXXV
+          </span>
+        </div>
 
-            {/* Risposta role — chars individuali per typing effect */}
-            <div
-              ref={roleRef}
-              className="flex items-center opacity-0"
-              aria-label={ROLE_TEXT}
-            >
-              {ROLE_TEXT.split('').map((char, i) => (
-                <span
-                  key={i}
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '13px',
-                    color: 'var(--text-secondary)',
-                    opacity: 0,
-                    whiteSpace: 'pre',
-                  }}
-                >
-                  {char}
-                </span>
-              ))}
-            </div>
-          </div>
+        {/* ── Name block: centro verticale ─────────────────────── */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          padding: 'clamp(2rem, 5vw, 4rem) 0',
+        }}>
 
-          {/* Name */}
-          <h1
-            ref={nameRef}
-            className="mb-2 select-none"
+          {/* MATTEO — right-aligned, piccolo, tracked */}
+          <div
+            ref={matteoRef}
             style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 700,
-              letterSpacing: '-0.04em',
-              lineHeight: 0.88,
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginBottom: 'clamp(0.5rem, 1vw, 0.875rem)',
+              opacity: 0,
             }}
           >
-            {/* Matteo — entrata semplice */}
-            <span
-              ref={matteoRef}
-              className="block opacity-0"
-              style={{
-                fontSize: 'clamp(48px, 7vw, 90px)',
-                color: 'var(--text-secondary)',
-                fontWeight: 600,
-                letterSpacing: '-0.02em',
-              }}
-            >
+            <span style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'clamp(0.875rem, 2vw, 1.75rem)',
+              fontWeight: 400,
+              letterSpacing: '0.24em',
+              textTransform: 'uppercase',
+              color: 'var(--text-secondary)',
+            }}>
               Matteo
             </span>
+          </div>
 
-            {/* Raineri — char-split, aria-hidden perché lo span padre ha il testo */}
-            <span
-              className="block"
-              style={{
-                fontSize: 'clamp(72px, 12vw, 160px)',
-                color: 'var(--text-primary)',
-                textShadow: '0 0 80px rgba(0,212,255,0.1)',
-              }}
-              aria-hidden="true"
-            >
+          {/* Accent divider — gradient verso destra, dot cyan */}
+          <div
+            ref={dividerRef}
+            style={{
+              height: '1px',
+              background: 'linear-gradient(to right, transparent 0%, rgba(0,212,255,0.15) 40%, var(--accent) 100%)',
+              marginBottom: 'clamp(0.5rem, 1vw, 0.875rem)',
+              position: 'relative',
+            }}
+          >
+            <span style={{
+              position: 'absolute',
+              right: -2,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: '5px',
+              height: '5px',
+              borderRadius: '50%',
+              background: 'var(--accent)',
+              boxShadow: '0 0 10px var(--accent-glow)',
+              display: 'block',
+            }} />
+          </div>
+
+          {/* RAINERI — architettonico, full-bleed */}
+          <h1
+            ref={nameRef}
+            aria-label="Raineri"
+            style={{ margin: 0, lineHeight: 0.82 }}
+          >
+            <span aria-hidden="true" style={{ display: 'block', whiteSpace: 'nowrap' }}>
               {RAINERI_CHARS.map((char, i) => (
                 <span
                   key={i}
                   ref={el => { raineriCharRefs.current[i] = el }}
-                  style={{ display: 'inline-block', clipPath: 'inset(100% 0 0 0)' }}
+                  style={{
+                    display: 'inline-block',
+                    clipPath: 'inset(100% 0 0 0)',
+                    fontFamily: 'var(--font-display)',
+                    fontWeight: 700,
+                    letterSpacing: '-0.04em',
+                    fontSize: 'clamp(4.5rem, 16vw, 15rem)',
+                    color: i === 0 ? 'var(--accent)' : 'var(--text-primary)',
+                    textShadow: i === 0
+                      ? '0 0 140px rgba(0,212,255,0.3)'
+                      : 'none',
+                  }}
                 >
                   {char}
                 </span>
               ))}
             </span>
-            <span className="sr-only">Raineri</span>
           </h1>
-
-          {/* Prompt 2: → cat mission.txt */}
-          <div ref={prompt2Ref} className="mt-6 mb-4 flex items-center gap-2 opacity-0">
-            <span className="font-mono text-sm" style={{ color: 'var(--accent)' }}>→</span>
-            <span className="font-mono text-sm" style={{ color: 'var(--text-secondary)' }}>cat mission.txt</span>
-          </div>
-
-          {/* Description block */}
-          <div ref={descBlockRef} className="flex gap-5 opacity-0">
-            <div
-              className="w-[2px] self-stretch"
-              style={{ background: 'linear-gradient(to bottom, var(--accent), rgba(0,212,255,0.05))' }}
-            />
-            <div className="flex flex-col gap-3">
-              <p
-                className="max-w-[480px]"
-                style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '16px',
-                  fontWeight: 300,
-                  color: 'var(--text-secondary)',
-                  lineHeight: 1.65,
-                }}
-              >
-                <span style={{ color: 'var(--accent)' }}>Creo esperienze digitali</span>
-                {' dove la tecnologia non si spiega — '}
-                <em style={{ color: 'var(--text-primary)' }}>si vive.</em>
-                <span
-                  className="hero-cursor ml-1.5 inline-block align-middle"
-                  style={{
-                    width: '8px',
-                    height: '17px',
-                    background: 'var(--accent)',
-                    boxShadow: '0 0 8px var(--accent-glow)',
-                  }}
-                />
-              </p>
-
-              <div className="flex flex-wrap gap-1.5">
-                {TECH_STACK.map((tech) => (
-                  <motion.span
-                    key={tech}
-                    className="cursor-default"
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '11px',
-                      color: 'var(--text-secondary)',
-                      padding: '4px 10px',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: '4px',
-                    }}
-                    whileHover={{
-                      color: 'var(--accent)',
-                      borderColor: 'rgba(0,212,255,0.25)',
-                      backgroundColor: 'var(--accent-dim)',
-                    }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {tech}
-                  </motion.span>
-                ))}
-              </div>
-            </div>
-          </div>
-
         </div>
 
-        {/* Scroll indicator */}
+        {/* ── Bottom: role + tech ───────────────────────────────── */}
+        <div
+          ref={bottomRef}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-end',
+            gap: '2rem',
+            opacity: 0,
+          }}
+        >
+          {/* Sinistra: role + tagline */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxWidth: '360px' }}>
+            <p style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'clamp(0.875rem, 1.4vw, 1.1rem)',
+              fontWeight: 500,
+              color: 'var(--text-primary)',
+              letterSpacing: '-0.01em',
+              margin: 0,
+              lineHeight: 1.3,
+            }}>
+              Frontend Developer<br />& Creative Engineer
+            </p>
+            <p style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: 'clamp(0.75rem, 1vw, 0.875rem)',
+              color: 'var(--text-secondary)',
+              fontWeight: 300,
+              lineHeight: 1.65,
+              margin: 0,
+            }}>
+              Non te lo spiego.{' '}
+              <em style={{ color: 'var(--text-primary)', fontStyle: 'italic' }}>
+                Te lo faccio vivere.
+              </em>
+            </p>
+          </div>
+
+          {/* Destra: tech stack testo semplice */}
+          <div style={{ flexShrink: 0 }}>
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-xs)',
+              color: 'var(--text-secondary)',
+              letterSpacing: '0.06em',
+              whiteSpace: 'nowrap',
+            }}>
+              {TECH.join(' · ')}
+            </span>
+          </div>
+        </div>
+
+        {/* ── Scroll indicator ─────────────────────────────────── */}
         <div
           ref={scrollIndicatorRef}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0"
+          style={{
+            position: 'absolute',
+            bottom: 'clamp(20px, 3.5vw, 48px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px',
+            opacity: 0,
+          }}
           aria-label="Scorri verso il basso"
         >
-          <span
-            className="uppercase"
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '10px',
-              letterSpacing: '2.5px',
-              color: 'var(--text-secondary)',
-            }}
-          >
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            letterSpacing: '2.5px',
+            color: 'var(--text-secondary)',
+            textTransform: 'uppercase',
+          }}>
             scroll
           </span>
           <div
             ref={scrollLineRef}
-            className="w-px"
             style={{
+              width: '1px',
               height: '36px',
               background: 'linear-gradient(to bottom, var(--accent), transparent)',
             }}
           />
         </div>
+
       </section>
     </>
   )
