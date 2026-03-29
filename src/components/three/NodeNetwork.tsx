@@ -5,7 +5,7 @@ import * as THREE from 'three'
 const NODE_COUNT = 80
 const BOUNDS = 18
 const CONNECTION_DISTANCE = 5
-const FLOAT_SPEED = 0.08
+const FLOAT_SPEED = 0.06
 const MOUSE_INFLUENCE_RADIUS = 3.5
 const MOUSE_STRENGTH = 0.4
 const DRIFT_SPEED = 0.02
@@ -70,8 +70,8 @@ export function NodeNetwork() {
       const y = (rng() - 0.5) * BOUNDS * 1.2
       const z = (rng() - 0.5) * BOUNDS * 0.6
 
-      // Push nodes away from center to leave clear zone for text
-      if (Math.abs(x) < 4 && Math.abs(y) < 3) {
+      // Zona sgombra al centro per il testo hero
+      if (Math.abs(x) < 5 && Math.abs(y) < 3) {
         x *= 2.5
       }
 
@@ -198,7 +198,7 @@ export function NodeNetwork() {
         ))
 
         const material = mesh.material as THREE.MeshBasicMaterial
-        material.opacity = Math.max(0, depthFade * 0.4 * (1 - scrollProgress * 1.5) * nodeFadeProgress)
+        material.opacity = Math.max(0, depthFade * 0.3 * (1 - scrollProgress * 1.5) * nodeFadeProgress)
       }
     }
 
@@ -239,7 +239,7 @@ export function NodeNetwork() {
         const fadeB = Math.max(0, Math.min(1, (introElapsed - nodes[iB].fadeDelay) / 0.8))
         const connFade = (fadeA + fadeB) * 0.5
 
-        const baseAlpha = (1 - dist / CONNECTION_DISTANCE) * 0.12 + mouseFactor * 0.3
+        const baseAlpha = Math.min(0.10, (1 - dist / CONNECTION_DISTANCE) * 0.08 + mouseFactor * 0.06)
         const alpha = Math.max(0, baseAlpha * (1 - scrollProgress * 1.5) * connFade)
 
         colorAttr.array[segIdx] = 0
