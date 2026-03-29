@@ -16,6 +16,7 @@ interface NodeData {
   phase: number
   phaseSpeed: number
   radius: number
+  fadeDelay: number
 }
 
 function buildConnections(positions: Float32Array, nodeCount: number): { indices: number[]; distances: number[] } {
@@ -39,7 +40,7 @@ function buildConnections(positions: Float32Array, nodeCount: number): { indices
 }
 
 export function NodeNetwork() {
-  const { pointer, viewport, camera } = useThree()
+  const { pointer, viewport } = useThree()
   const groupRef = useRef<THREE.Group>(null)
 
   // Node data stored in refs — no React state for frame-level updates
@@ -48,6 +49,9 @@ export function NodeNetwork() {
   const lineRef = useRef<THREE.LineSegments | null>(null)
   const connectionIndicesRef = useRef<number[]>([])
   const connectionDistancesRef = useRef<number[]>([])
+
+  // Camera + nodi intro
+  const introRef = useRef({ started: false, startTime: 0 })
 
   const initialPositions = useMemo<Float32Array>(() => {
     const rng = (() => {
@@ -85,6 +89,7 @@ export function NodeNetwork() {
         phase: rng() * Math.PI * 2,
         phaseSpeed: 0.3 + rng() * 0.7,
         radius: 0.035,
+        fadeDelay: rng() * 2.0,
       })
     }
 
@@ -99,7 +104,6 @@ export function NodeNetwork() {
 
   const sphereGeometry = useMemo(() => new THREE.SphereGeometry(0.035, 6, 6), [])
 
-  // Geometry for the line segments
   const lineGeometry = useMemo(() => {
     const geo = new THREE.BufferGeometry()
     const positions = new Float32Array(connectionIndicesRef.current.length * 3)
@@ -109,9 +113,22 @@ export function NodeNetwork() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionIndicesRef.current.length])
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const nodes = nodesRef.current
     if (!nodes.length) return
+
+    // ── Camera wake-up: z=8 → z=12 in 3s ──────────────────────
+    if (!introRef.current.started) {
+      introRef.current.started = true
+      introRef.current.startTime = state.clock.elapsedTime
+      state.camera.position.z = 8
+    }
+    const introElapsed = state.clock.elapsedTime - introRef.current.startTime
+    if (introElapsed < 3) {
+      const progress = introElapsed / 3
+      const eased = 1 - Math.pow(1 - progress, 3)   // cubicOut
+      state.camera.position.z = 8 + (12 - 8) * eased
+    }
 
     // Slow drift rotation on the group
     if (groupRef.current) {
@@ -129,13 +146,13 @@ export function NodeNetwork() {
     const mouseY = pointer.y * (viewport.height / 2)
 
     const t = performance.now() * 0.001
-    const camZ = camera.position.z
+    const camZ = state.camera.position.z
 
     // Update node positions
     for (let i = 0; i < NODE_COUNT; i++) {
       const node = nodes[i]
 
-      // Organic floating motion — slow, breathing rhythm
+      // Organic floating motion
       const floatX = Math.sin(t * FLOAT_SPEED * node.phaseSpeed + node.phase) * 0.012
       const floatY = Math.cos(t * FLOAT_SPEED * node.phaseSpeed * 0.7 + node.phase + 1.2) * 0.012
       const floatZ = Math.sin(t * FLOAT_SPEED * node.phaseSpeed * 0.4 + node.phase + 2.4) * 0.006
@@ -170,11 +187,18 @@ export function NodeNetwork() {
       const mesh = sphereRefs.current[i]
       if (mesh) {
         mesh.position.copy(node.position)
-        // Depth-of-field: nodes farther from camera have lower opacity
+
+        // Depth-of-field fade
         const distFromCam = Math.abs(camZ - node.position.z)
         const depthFade = Math.max(0.15, 1 - (distFromCam / (camZ + BOUNDS * 0.4)) * 0.7)
+
+        // Nodi fade-in progressivo: ogni nodo ha un fadeDelay random (0–2s)
+        const nodeFadeProgress = Math.max(0, Math.min(1,
+          (introElapsed - node.fadeDelay) / 0.8
+        ))
+
         const material = mesh.material as THREE.MeshBasicMaterial
-        material.opacity = Math.max(0, depthFade * 0.4 * (1 - scrollProgress * 1.5))
+        material.opacity = Math.max(0, depthFade * 0.4 * (1 - scrollProgress * 1.5) * nodeFadeProgress)
       }
     }
 
@@ -202,7 +226,7 @@ export function NodeNetwork() {
         posAttr.array[segIdx + 4] = pB.y
         posAttr.array[segIdx + 5] = pB.z
 
-        // Soft mouse glow — gradual falloff
+        // Mouse glow
         const dxA = nodes[iA].position.x - mouseX
         const dyA = nodes[iA].position.y - mouseY
         const distAToMouse = Math.sqrt(dxA * dxA + dyA * dyA)
@@ -210,10 +234,14 @@ export function NodeNetwork() {
           ? (1 - distAToMouse / MOUSE_INFLUENCE_RADIUS) * 0.3
           : 0
 
-        const baseAlpha = (1 - dist / CONNECTION_DISTANCE) * 0.12 + mouseFactor * 0.3
-        const alpha = Math.max(0, baseAlpha * (1 - scrollProgress * 1.5))
+        // Connessioni fade-in: usa la media del fade dei due nodi connessi
+        const fadeA = Math.max(0, Math.min(1, (introElapsed - nodes[iA].fadeDelay) / 0.8))
+        const fadeB = Math.max(0, Math.min(1, (introElapsed - nodes[iB].fadeDelay) / 0.8))
+        const connFade = (fadeA + fadeB) * 0.5
 
-        // Cyan color: #00D4FF = (0, 0.831, 1)
+        const baseAlpha = (1 - dist / CONNECTION_DISTANCE) * 0.12 + mouseFactor * 0.3
+        const alpha = Math.max(0, baseAlpha * (1 - scrollProgress * 1.5) * connFade)
+
         colorAttr.array[segIdx] = 0
         colorAttr.array[segIdx + 1] = 0.831 * alpha * 5
         colorAttr.array[segIdx + 2] = 1.0 * alpha * 5
@@ -229,12 +257,10 @@ export function NodeNetwork() {
 
   return (
     <group ref={groupRef}>
-      {/* Line connections */}
       <lineSegments ref={lineRef} geometry={lineGeometry} frustumCulled={false}>
         <lineBasicMaterial vertexColors transparent opacity={1} />
       </lineSegments>
 
-      {/* Nodes */}
       {Array.from({ length: NODE_COUNT }, (_, i) => (
         <mesh
           key={i}
@@ -247,11 +273,7 @@ export function NodeNetwork() {
           geometry={sphereGeometry}
           frustumCulled={true}
         >
-          <meshBasicMaterial
-            color="#00D4FF"
-            transparent
-            opacity={0.4}
-          />
+          <meshBasicMaterial color="#00D4FF" transparent opacity={0} />
         </mesh>
       ))}
     </group>

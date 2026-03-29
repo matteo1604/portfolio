@@ -1,12 +1,32 @@
+import { useState, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { NodeNetwork } from './NodeNetwork'
 
 /**
  * HeroCanvas — position:fixed full-viewport Canvas, rendered behind all content.
- * The Canvas itself handles the 3D scene; DOM content overlays it via z-index.
+ * Bloom parte a intensità alta (1.2) al mount e scende a 0.4 in 2.5s.
  */
 export function HeroCanvas() {
+  const [bloomIntensity, setBloomIntensity] = useState(1.2)
+
+  useEffect(() => {
+    const startTime = performance.now()
+    const duration = 2500
+    let raf: number
+
+    const tick = () => {
+      const elapsed = performance.now() - startTime
+      const t = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 3)   // cubicOut
+      setBloomIntensity(1.2 - (1.2 - 0.4) * eased)
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
   return (
     <div
       style={{
@@ -20,7 +40,7 @@ export function HeroCanvas() {
     >
       <Canvas
         dpr={[1, 1.5]}
-        camera={{ position: [0, 0, 12], fov: 60 }}
+        camera={{ position: [0, 0, 8], fov: 60 }}
         gl={{
           antialias: false,
           alpha: false,
@@ -31,7 +51,7 @@ export function HeroCanvas() {
         <NodeNetwork />
         <EffectComposer>
           <Bloom
-            intensity={0.4}
+            intensity={bloomIntensity}
             luminanceThreshold={0.3}
             luminanceSmoothing={0.9}
           />
