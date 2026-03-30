@@ -1,89 +1,94 @@
 import { useRef } from 'react'
-import { motion } from 'framer-motion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@/hooks/useGSAP'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { EASING, DURATION } from '@/lib/animations'
 import { HeroCanvas } from '@/components/three/HeroCanvas'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const TECH_STACK = ['React', 'TypeScript', 'Three.js', 'GSAP', 'Tailwind'] as const
+const TAGLINE_WORDS = ['Creo', 'esperienze,', 'non', 'siti.'] as const
 
 export function HeroSection() {
-  const sectionRef        = useRef<HTMLElement>(null)
-  const contentRef        = useRef<HTMLDivElement>(null)
-  const prompt1Ref        = useRef<HTMLDivElement>(null)
-  const nameRef           = useRef<HTMLHeadingElement>(null)
-  const prompt2Ref        = useRef<HTMLDivElement>(null)
-  const descBlockRef      = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const subtitleRef = useRef<HTMLDivElement>(null)
+  const taglineRef = useRef<HTMLParagraphElement>(null)
+  const taglineWordsRef = useRef<(HTMLSpanElement | null)[]>([])
   const scrollIndicatorRef = useRef<HTMLDivElement>(null)
-  const scrollLineRef     = useRef<HTMLDivElement>(null)
+  const scrollLineRef = useRef<HTMLDivElement>(null)
+  const hudTopLeftRef = useRef<HTMLDivElement>(null)
+  const hudTopRightRef = useRef<HTMLDivElement>(null)
+  const hudBottomLeftRef = useRef<HTMLDivElement>(null)
 
   const prefersReducedMotion = usePrefersReducedMotion()
+  const isDesktop = useMediaQuery('(min-width: 768px)')
 
-  // ── Entry animation timeline ──────────────────────────────────
+  // ── Entry animation timeline (starts after shader reveal ~5s) ──
   useGSAP(
     () => {
+      const hudEls = [hudTopLeftRef.current, hudTopRightRef.current, hudBottomLeftRef.current]
+
       if (prefersReducedMotion) {
         gsap.set(
-          [prompt1Ref.current, nameRef.current, prompt2Ref.current,
-           descBlockRef.current, scrollIndicatorRef.current],
-          { opacity: 1, y: 0, clipPath: 'inset(0 0% 0 0)' },
+          [subtitleRef.current, taglineRef.current, scrollIndicatorRef.current, ...hudEls],
+          { opacity: 1, y: 0 },
         )
+        gsap.set(taglineWordsRef.current.filter(Boolean), { opacity: 1, y: 0 })
         return
       }
 
-      const tl = gsap.timeline({ delay: 0.5 })
+      const tl = gsap.timeline({ delay: 5.2 })
 
-      // t=0 — primo prompt
+      // t=0 — Terminal description fade-in
       tl.fromTo(
-        prompt1Ref.current,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.4, ease: 'power2.out' },
-        0,
-      )
-
-      // t=0.3 — nome clip-path wipe da sinistra
-      tl.fromTo(
-        nameRef.current,
-        { clipPath: 'inset(0 100% 0 0)', opacity: 1 },
-        {
-          clipPath: 'inset(0 0% 0 0)',
-          duration: DURATION.dramatic,
-          ease: `cubic-bezier(${EASING.dramatic.join(',')})`,
-        },
-        0.3,
-      )
-
-      // t=1.6 — secondo prompt
-      tl.fromTo(
-        prompt2Ref.current,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.4, ease: 'power2.out' },
-        1.6,
-      )
-
-      // t=1.9 — blocco descrizione fade-up
-      tl.fromTo(
-        descBlockRef.current,
-        { opacity: 0, y: 24 },
+        subtitleRef.current,
+        { opacity: 0, y: 16 },
         {
           opacity: 1,
           y: 0,
-          duration: 0.8,
-          ease: `cubic-bezier(${EASING.dramatic.join(',')})`,
+          duration: DURATION.normal,
+          ease: `cubic-bezier(${EASING.smooth.join(',')})`,
         },
-        1.9,
       )
 
-      // t=2.8 — scroll indicator
+      // t≈0.4 — Tagline container visible, then words stagger
+      tl.to(taglineRef.current, { opacity: 1, duration: 0.01 }, '-=0.2')
+
+      tl.fromTo(
+        taglineWordsRef.current.filter(Boolean),
+        { opacity: 0, y: 12 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: DURATION.normal,
+          ease: `cubic-bezier(${EASING.dramatic.join(',')})`,
+          stagger: 0.18,
+        },
+        '<',
+      )
+
+      // HUD elements fade in delicately
+      tl.fromTo(
+        hudEls.filter(Boolean),
+        { opacity: 0 },
+        {
+          opacity: 1,
+          duration: DURATION.slow,
+          ease: 'power2.out',
+          stagger: 0.12,
+        },
+        '-=0.4',
+      )
+
+      // Scroll indicator last
       tl.fromTo(
         scrollIndicatorRef.current,
         { opacity: 0 },
-        { opacity: 1, duration: 0.6, ease: 'power2.out' },
-        2.8,
+        { opacity: 1, duration: DURATION.normal, ease: 'power2.out' },
+        '-=0.3',
       )
 
       // Scroll line — loop yoyo
@@ -98,7 +103,7 @@ export function HeroSection() {
     { scope: sectionRef, dependencies: [prefersReducedMotion] },
   )
 
-  // ── Scroll exit: --hero-progress + fade out ───────────────────
+  // ── Scroll exit: --hero-progress + fade out ──
   useGSAP(
     () => {
       if (!sectionRef.current) return
@@ -110,14 +115,20 @@ export function HeroSection() {
         scrub: true,
         onUpdate: (self) => {
           document.documentElement.style.setProperty('--hero-progress', String(self.progress))
+          document.documentElement.style.setProperty(
+            '--hero-progress-pct',
+            `${self.progress * 100}%`,
+          )
         },
         onLeaveBack: () => {
           document.documentElement.style.setProperty('--hero-progress', '0')
+          document.documentElement.style.setProperty('--hero-progress-pct', '0%')
         },
       })
 
       if (prefersReducedMotion) return
 
+      // Content fade out
       gsap.to(contentRef.current, {
         opacity: 0,
         y: -40,
@@ -129,6 +140,21 @@ export function HeroSection() {
           scrub: true,
         },
       })
+
+      // HUD fade out (slightly earlier)
+      const hudEls = [hudTopLeftRef.current, hudTopRightRef.current, hudBottomLeftRef.current].filter(Boolean)
+      if (hudEls.length) {
+        gsap.to(hudEls, {
+          opacity: 0,
+          ease: 'power2.in',
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: 'top top',
+            end: '30% top',
+            scrub: true,
+          },
+        })
+      }
     },
     { scope: sectionRef, dependencies: [prefersReducedMotion] },
   )
@@ -141,155 +167,229 @@ export function HeroSection() {
         ref={sectionRef}
         id="hero"
         aria-label="Hero"
-        className="relative z-[1] flex min-h-screen items-center"
-        style={{ padding: '0 clamp(32px, 5vw, 80px)' }}
+        className="relative z-[1] flex min-h-screen flex-col items-center justify-end"
+        style={{ paddingBottom: 'clamp(4rem, 8vh, 6rem)' }}
       >
-        <div ref={contentRef} className="flex w-full max-w-[1200px] flex-col">
-
-          {/* 1. PROMPT: → whoami */}
-          <div ref={prompt1Ref} className="mb-5 flex items-center gap-2 opacity-0">
-            <span
-              style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--accent)' }}
-            >
-              →
-            </span>
-            <span
-              style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--text-secondary)' }}
-            >
-              whoami
-            </span>
-          </div>
-
-          {/* 2. NOME — due righe nella stessa h1 */}
+        {/* Reduced motion fallback: static name in DOM */}
+        {prefersReducedMotion && (
           <h1
-            ref={nameRef}
-            className="mb-2 select-none opacity-0"
+            className="mb-8 select-none text-center"
             style={{
               fontFamily: 'var(--font-display)',
+              fontSize: 'var(--text-hero)',
               fontWeight: 700,
-              letterSpacing: '-0.04em',
-              lineHeight: 0.88,
+              color: 'var(--text-primary)',
+              textShadow: '0 0 40px var(--accent-glow)',
+              margin: 0,
             }}
           >
-            {/* Riga 1: Matteo */}
-            <span
-              className="block"
-              style={{
-                fontSize: 'clamp(48px, 7vw, 90px)',
-                color: 'var(--text-secondary)',
-                fontWeight: 600,
-                letterSpacing: '-0.02em',
-              }}
-            >
-              M<span className="accent">a</span>tteo
-            </span>
-
-            {/* Riga 2: Raineri */}
-            <span
-              className="block"
-              style={{
-                fontSize: 'clamp(72px, 12vw, 160px)',
-                color: 'var(--text-primary)',
-                textShadow: '0 0 80px rgba(0,212,255,0.1)',
-              }}
-            >
-              R<span className="accent">a</span>ineri
-            </span>
+            MATTEO
           </h1>
+        )}
 
-          {/* 3. PROMPT: → cat mission.txt */}
-          <div
-            ref={prompt2Ref}
-            className="flex items-center gap-2 opacity-0"
-            style={{ marginTop: '24px', marginBottom: '16px' }}
-          >
-            <span
-              style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--accent)' }}
-            >
-              →
-            </span>
-            <span
-              style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--text-secondary)' }}
-            >
-              cat mission.txt
-            </span>
-          </div>
-
-          {/* 4. BLOCCO DESCRIZIONE */}
-          <div ref={descBlockRef} className="flex gap-5 opacity-0">
-
-            {/* Linea accent verticale */}
+        {/* ── HUD Elements (desktop only) ─────────────────── */}
+        {isDesktop && (
+          <>
+            {/* Top-left: coordinates */}
             <div
-              className="w-[2px] self-stretch flex-shrink-0"
+              ref={hudTopLeftRef}
               style={{
-                background: 'linear-gradient(to bottom, var(--accent), rgba(0,212,255,0.05))',
+                position: 'absolute',
+                top: 'clamp(1.5rem, 3vh, 2.5rem)',
+                left: 'clamp(1.5rem, 3vw, 2.5rem)',
+                opacity: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
               }}
-            />
-
-            {/* Contenuto */}
-            <div className="flex flex-col gap-3">
-
-              {/* Tagline in inglese */}
-              <p
-                className="max-w-[520px]"
+            >
+              <span
                 style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '16px',
-                  fontWeight: 300,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.1em',
                   color: 'var(--text-secondary)',
-                  lineHeight: 1.65,
-                  margin: 0,
+                  opacity: 0.4,
                 }}
               >
-                <span style={{ color: 'var(--accent)' }}>I build digital experiences</span>
-                {' where technology is not explained — '}
-                <em style={{ color: 'var(--text-primary)', fontStyle: 'italic' }}>
-                  it&apos;s lived.
-                </em>
-                {/* Cursore lampeggiante */}
-                <span
-                  className="hero-cursor ml-1.5 inline-block align-middle"
+                45.4642° N, 9.1900° E
+              </span>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.1em',
+                  color: 'var(--accent)',
+                  opacity: 0.3,
+                }}
+              >
+                MILANO, IT
+              </span>
+            </div>
+
+            {/* Top-right: year / status */}
+            <div
+              ref={hudTopRightRef}
+              style={{
+                position: 'absolute',
+                top: 'clamp(1.5rem, 3vh, 2.5rem)',
+                right: 'clamp(1.5rem, 3vw, 2.5rem)',
+                opacity: 0,
+                textAlign: 'right',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.1em',
+                  color: 'var(--text-secondary)',
+                  opacity: 0.4,
+                }}
+              >
+                &copy; 2026
+              </span>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.1em',
+                  color: 'var(--accent)',
+                  opacity: 0.3,
+                }}
+              >
+                AVAILABLE FOR WORK
+              </span>
+            </div>
+
+            {/* Bottom-left: scroll progress */}
+            <div
+              ref={hudBottomLeftRef}
+              style={{
+                position: 'absolute',
+                bottom: 'clamp(1.5rem, 3vh, 2.5rem)',
+                left: 'clamp(1.5rem, 3vw, 2.5rem)',
+                opacity: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              <div
+                style={{
+                  width: '1px',
+                  height: '3rem',
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
                   style={{
-                    width: '8px',
-                    height: '17px',
-                    background: 'var(--accent)',
-                    boxShadow: '0 0 8px var(--accent-glow)',
+                    width: '100%',
+                    height: 'var(--hero-progress-pct, 0%)',
+                    backgroundColor: 'var(--accent)',
+                    opacity: 0.5,
+                    transition: 'height 0.1s linear',
                   }}
                 />
-              </p>
-
-              {/* Tech stack — Framer Motion solo per hover */}
-              <div className="flex flex-wrap gap-1.5">
-                {TECH_STACK.map((tech) => (
-                  <motion.span
-                    key={tech}
-                    className="cursor-default"
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '11px',
-                      color: 'var(--text-secondary)',
-                      padding: '4px 10px',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: '4px',
-                    }}
-                    whileHover={{
-                      color: 'var(--accent)',
-                      borderColor: 'rgba(0,212,255,0.25)',
-                      backgroundColor: 'var(--accent-dim)',
-                    }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {tech}
-                  </motion.span>
-                ))}
               </div>
-
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.6rem',
+                  letterSpacing: '0.1em',
+                  color: 'var(--text-secondary)',
+                  opacity: 0.3,
+                }}
+              >
+                SCROLL
+              </span>
             </div>
+          </>
+        )}
+
+        {/* ── Main content ────────────────────────────────── */}
+        <div ref={contentRef} className="flex flex-col items-center">
+          {/* Terminal-style description */}
+          <div
+            ref={subtitleRef}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              opacity: 0,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-sm)',
+                color: 'var(--accent)',
+                opacity: 0.7,
+              }}
+            >
+              &gt;
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 400,
+                color: 'var(--text-secondary)',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Ingegneria Informatica &middot; Frontend &amp; Creative Dev
+            </span>
+            <span
+              className="hero-cursor"
+              style={{
+                display: 'inline-block',
+                width: '2px',
+                height: '1em',
+                backgroundColor: 'var(--accent)',
+              }}
+            />
           </div>
 
+          {/* Tagline — word-by-word reveal */}
+          <p
+            ref={taglineRef}
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: 'var(--text-xl)',
+              fontWeight: 500,
+              color: 'var(--accent)',
+              margin: '0.75rem 0 0',
+              opacity: 0,
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: '0 0.35em',
+            }}
+          >
+            {TAGLINE_WORDS.map((word, i) => (
+              <span
+                key={word}
+                ref={(el) => { taglineWordsRef.current[i] = el }}
+                style={{
+                  display: 'inline-block',
+                  opacity: 0,
+                  transform: 'translateY(12px)',
+                }}
+              >
+                {word}
+              </span>
+            ))}
+          </p>
         </div>
 
-        {/* 5. SCROLL INDICATOR */}
+        {/* Scroll indicator */}
         <div
           ref={scrollIndicatorRef}
           className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0"
@@ -315,7 +415,6 @@ export function HeroSection() {
             }}
           />
         </div>
-
       </section>
     </>
   )

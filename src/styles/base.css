@@ -84,12 +84,12 @@ img, video {
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
+  0%, 100% { opacity: 0.6; }
   50% { opacity: 0; }
 }
 
 .hero-cursor {
-  animation: blink 1s step-end infinite;
+  animation: blink 1.2s step-end infinite;
 }
 
 /* ── Reduced motion ─────────────────────────────────────────── */
