@@ -44,24 +44,25 @@ async function sampleTextPositions(count: number): Promise<Float32Array> {
 
   const W = 1024
   const H = 256
+  // Wider x-range to represent left-biased editorial layout
+  const SAMPLE_TEXT_W = 22
   const canvas = new OffscreenCanvas(W, H)
   const ctx = canvas.getContext('2d')!
   ctx.clearRect(0, 0, W, H)
   ctx.fillStyle = '#ffffff'
-  ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
 
-  // Line 1 — MATTEO
-  ctx.font = 'bold 140px "Clash Display", "Helvetica Neue", Arial, sans-serif'
-  ctx.fillText('MATTEO', W / 2, H * 0.30)
+  // Draw MATTEO centered at canvas x≈372 (world x≈-3), y≈73 (world y≈1.5)
+  ctx.textAlign = 'center'
+  ctx.font = 'bold 145px "Clash Display", "Helvetica Neue", Arial, sans-serif'
+  ctx.fillText('MATTEO', 372, 73)
 
-  // Line 2 — RAINERI (slightly smaller)
-  ctx.font = 'bold 110px "Clash Display", "Helvetica Neue", Arial, sans-serif'
-  ctx.fillText('RAINERI', W / 2, H * 0.75)
+  // Draw RAINERI centered at canvas x≈419 (world x≈-2), y≈165 (world y≈-1.0)
+  ctx.font = 'bold 115px "Clash Display", "Helvetica Neue", Arial, sans-serif'
+  ctx.fillText('RAINERI', 419, 165)
 
   const pixels = ctx.getImageData(0, 0, W, H).data
 
-  // Collect every lit pixel
   const litX: number[] = []
   const litY: number[] = []
   for (let py = 0; py < H; py++) {
@@ -77,17 +78,15 @@ async function sampleTextPositions(count: number): Promise<Float32Array> {
   const result = new Float32Array(count * 3)
 
   if (total === 0) {
-    // Fallback: spread particles in a horizontal band
     const rng = makeLcg(999)
     for (let i = 0; i < count; i++) {
-      result[i * 3]     = (rng() - 0.5) * WORLD_TEXT_W
+      result[i * 3]     = (rng() - 0.5) * SAMPLE_TEXT_W
       result[i * 3 + 1] = (rng() - 0.5) * 2
       result[i * 3 + 2] = (rng() - 0.5) * 0.6
     }
     return result
   }
 
-  // Uniform stride sampling — evenly distributed across all lit pixels
   const stride = Math.max(1, Math.floor(total / count))
   const rng = makeLcg(1337)
 
@@ -96,12 +95,11 @@ async function sampleTextPositions(count: number): Promise<Float32Array> {
     const px = litX[idx]
     const py = litY[idx]
 
-    result[i * 3]     = (px / W - 0.5) * WORLD_TEXT_W
+    result[i * 3]     = (px / W - 0.5) * SAMPLE_TEXT_W
     result[i * 3 + 1] = -(py / H - 0.5) * WORLD_TEXT_H
     result[i * 3 + 2] = (rng() - 0.5) * 0.6
   }
 
-  // Debug: log bounding box (should be ~ ±8 on X, ±3 on Y)
   if (import.meta.env.DEV) {
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
     for (let i = 0; i < count; i++) {
@@ -110,7 +108,7 @@ async function sampleTextPositions(count: number): Promise<Float32Array> {
       minY = Math.min(minY, result[i * 3 + 1])
       maxY = Math.max(maxY, result[i * 3 + 1])
     }
-    console.log('[ParticleNetwork] lit pixels:', total, '  target bbox x:', minX.toFixed(2), '→', maxX.toFixed(2), '  y:', minY.toFixed(2), '→', maxY.toFixed(2))
+    console.log('[ParticleNetwork] lit pixels:', total, '  bbox x:', minX.toFixed(2), '→', maxX.toFixed(2), '  y:', minY.toFixed(2), '→', maxY.toFixed(2))
   }
 
   return result
