@@ -121,7 +121,7 @@ export interface ParticleNetworkRef {
   setConvergence:    (v: number) => void
   setMouseWorld:     (x: number, y: number) => void
   setScrollProgress: (v: number) => void
-  setOvershoot:      (v: number) => void   // ← nuovo
+  setOvershoot:      (v: number) => void
 }
 
 interface Props {
@@ -226,7 +226,7 @@ export function ParticleNetwork({ networkRef, isMobile }: Props) {
       setConvergence:    (v) => { convergenceRef.current = v },
       setMouseWorld:     (x, y) => { mouseWorldRef.current = [x, y] },
       setScrollProgress: (v) => { scrollRef.current = v },
-      setOvershoot:      (v) => { overshootRef.current = v },  // ← nuovo
+      setOvershoot:      (v) => { overshootRef.current = v },
     }
   }, [networkRef])
 
@@ -275,7 +275,8 @@ export function ParticleNetwork({ networkRef, isMobile }: Props) {
             px = tx + (tx / len) * overshoot * 0.18
             py = ty + (ty / len) * overshoot * 0.18
           } else {
-            px = tx; py = ty
+            px = tx
+            py = ty
           }
           pz = tz
         } else {
