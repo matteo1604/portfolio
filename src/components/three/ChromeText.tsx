@@ -61,12 +61,12 @@ function ChromeTextInner({ chromeRef }: Props) {
   })
 
   const chromeMaterialProps = {
-    color: '#C0C0C8' as const,
+    color: '#E0E0E8' as const,
     metalness: 1,
-    roughness: 0.12,
-    envMapIntensity: 1.8,
-    clearcoat: 0.4,
-    clearcoatRoughness: 0.08,
+    roughness: 0.04,
+    envMapIntensity: 2.8,
+    clearcoat: 0.9,
+    clearcoatRoughness: 0.04,
     transparent: true,
     opacity: 0,
   } as const
@@ -80,10 +80,10 @@ function ChromeTextInner({ chromeRef }: Props) {
           size={2.2}
           height={0.55}
           bevelEnabled
-          bevelThickness={0.05}
-          bevelSize={0.03}
-          bevelSegments={6}
-          curveSegments={12}
+          bevelThickness={0.06}
+          bevelSize={0.07}
+          bevelSegments={10}
+          curveSegments={20}
         >
           MATTEO
           <meshPhysicalMaterial ref={mat1Ref} {...chromeMaterialProps} />
@@ -97,10 +97,10 @@ function ChromeTextInner({ chromeRef }: Props) {
           size={1.8}
           height={0.45}
           bevelEnabled
-          bevelThickness={0.04}
-          bevelSize={0.025}
-          bevelSegments={5}
-          curveSegments={12}
+          bevelThickness={0.05}
+          bevelSize={0.055}
+          bevelSegments={8}
+          curveSegments={18}
         >
           RAINERI
           <meshPhysicalMaterial ref={mat2Ref} {...chromeMaterialProps} />

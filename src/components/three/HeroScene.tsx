@@ -153,10 +153,12 @@ export function HeroScene({ isMobile }: Props) {
   return (
     <>
       {/* Lighting — required for MeshPhysicalMaterial chrome effect */}
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[5, 5, 5]} intensity={1.0} />
-      {/* Cyan point light behind camera — gives the signature cyan rim on chrome */}
-      <pointLight position={[0, 0, 10]} intensity={0.5} color="#00D4FF" />
+      <ambientLight intensity={0.1} />
+      <directionalLight position={[5, 5, 5]} intensity={1.8} />
+      {/* Cyan point light behind camera — signature cyan rim on chrome */}
+      <pointLight position={[0, 0, 10]} intensity={2.0} color="#00D4FF" />
+      {/* Warm fill from top-left — illuminates MATTEO side, adds depth */}
+      <pointLight position={[-8, 4, 6]} intensity={0.6} />
 
       {/* Invisible plane at z=0 for raycasting */}
       <mesh ref={planeMeshRef} visible={false}>
