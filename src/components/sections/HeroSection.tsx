@@ -1,109 +1,135 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { motion } from 'framer-motion'
 import { useGSAP } from '@/hooks/useGSAP'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { EASING, DURATION } from '@/lib/animations'
+import { scrollToSection } from '@/lib/lenis'
 import { HeroCanvas } from '@/components/three/HeroCanvas'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const TAGLINE_WORDS = ['Creo', 'esperienze,', 'non', 'siti.'] as const
+const TAGLINE_WORDS = ["I don't build websites.", 'I build experiences.'] as const
 
 export function HeroSection() {
-  const sectionRef = useRef<HTMLElement>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
-  const subtitleRef = useRef<HTMLDivElement>(null)
-  const taglineRef = useRef<HTMLParagraphElement>(null)
-  const taglineWordsRef = useRef<(HTMLSpanElement | null)[]>([])
+  const sectionRef         = useRef<HTMLElement>(null)
+  const contentRef         = useRef<HTMLDivElement>(null)
+  const subtitleRef        = useRef<HTMLDivElement>(null)
+  const taglineRef         = useRef<HTMLParagraphElement>(null)
+  const taglineWordsRef    = useRef<(HTMLSpanElement | null)[]>([])
   const scrollIndicatorRef = useRef<HTMLDivElement>(null)
-  const scrollLineRef = useRef<HTMLDivElement>(null)
-  const hudTopLeftRef = useRef<HTMLDivElement>(null)
-  const hudTopRightRef = useRef<HTMLDivElement>(null)
-  const hudBottomLeftRef = useRef<HTMLDivElement>(null)
+  const scrollLineRef      = useRef<HTMLDivElement>(null)
+  const ctaWrapperRef      = useRef<HTMLDivElement>(null)      // GSAP: entry + scroll exit
+  const hudTopLeftRef      = useRef<HTMLDivElement>(null)
+  const hudTopRightRef     = useRef<HTMLDivElement>(null)
+  const hudBottomLeftRef   = useRef<HTMLDivElement>(null)
 
   const prefersReducedMotion = usePrefersReducedMotion()
-  const isDesktop = useMediaQuery('(min-width: 768px)')
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  const isDesktop = !isMobile
 
-  // ── Entry animation timeline (starts after shader reveal ~5s) ──
+  // ── Wait for --hero-animation-complete then run entry timeline ──────────
   useGSAP(
     () => {
       const hudEls = [hudTopLeftRef.current, hudTopRightRef.current, hudBottomLeftRef.current]
 
       if (prefersReducedMotion) {
         gsap.set(
-          [subtitleRef.current, taglineRef.current, scrollIndicatorRef.current, ...hudEls],
+          [subtitleRef.current, taglineRef.current, scrollIndicatorRef.current, ctaWrapperRef.current, ...hudEls],
           { opacity: 1, y: 0 },
         )
         gsap.set(taglineWordsRef.current.filter(Boolean), { opacity: 1, y: 0 })
         return
       }
 
-      const tl = gsap.timeline({ delay: 5.2 })
+      const runEntryTimeline = () => {
+        const tl = gsap.timeline()
 
-      // t=0 — Terminal description fade-in
-      tl.fromTo(
-        subtitleRef.current,
-        { opacity: 0, y: 16 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: DURATION.normal,
-          ease: `cubic-bezier(${EASING.smooth.join(',')})`,
-        },
-      )
-
-      // t≈0.4 — Tagline container visible, then words stagger
-      tl.to(taglineRef.current, { opacity: 1, duration: 0.01 }, '-=0.2')
-
-      tl.fromTo(
-        taglineWordsRef.current.filter(Boolean),
-        { opacity: 0, y: 12 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: DURATION.normal,
-          ease: `cubic-bezier(${EASING.dramatic.join(',')})`,
-          stagger: 0.18,
-        },
-        '<',
-      )
-
-      // HUD elements fade in delicately
-      tl.fromTo(
-        hudEls.filter(Boolean),
-        { opacity: 0 },
-        {
-          opacity: 1,
-          duration: DURATION.slow,
-          ease: 'power2.out',
-          stagger: 0.12,
-        },
-        '-=0.4',
-      )
-
-      // Scroll indicator last
-      tl.fromTo(
-        scrollIndicatorRef.current,
-        { opacity: 0 },
-        { opacity: 1, duration: DURATION.normal, ease: 'power2.out' },
-        '-=0.3',
-      )
-
-      // Scroll line — loop yoyo
-      if (scrollLineRef.current) {
-        gsap.fromTo(
-          scrollLineRef.current,
-          { scaleY: 0.4, opacity: 0.2, transformOrigin: 'top center' },
-          { scaleY: 1, opacity: 0.8, duration: 2.2, repeat: -1, yoyo: true, ease: 'power2.inOut' },
+        tl.fromTo(
+          subtitleRef.current,
+          { opacity: 0, y: 16 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: DURATION.normal,
+            ease: `cubic-bezier(${EASING.smooth.join(',')})`,
+          },
         )
+
+        tl.to(taglineRef.current, { opacity: 1, duration: 0.01 }, '-=0.2')
+
+        tl.fromTo(
+          taglineWordsRef.current.filter(Boolean),
+          { opacity: 0, y: 12 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: DURATION.normal,
+            ease: `cubic-bezier(${EASING.dramatic.join(',')})`,
+            stagger: 0.18,
+          },
+          '<',
+        )
+
+        tl.fromTo(
+          hudEls.filter(Boolean),
+          { opacity: 0 },
+          {
+            opacity: 1,
+            duration: DURATION.slow,
+            ease: 'power2.out',
+            stagger: 0.12,
+          },
+          '-=0.4',
+        )
+
+        tl.fromTo(
+          scrollIndicatorRef.current,
+          { opacity: 0 },
+          { opacity: 1, duration: DURATION.normal, ease: 'power2.out' },
+          '-=0.3',
+        )
+
+        tl.fromTo(
+          ctaWrapperRef.current,
+          { opacity: 0, y: 12 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: DURATION.normal,
+            ease: `cubic-bezier(${EASING.dramatic.join(',')})`,
+          },
+          '-=0.2',
+        )
+
+        if (scrollLineRef.current) {
+          gsap.fromTo(
+            scrollLineRef.current,
+            { scaleY: 0.4, opacity: 0.2, transformOrigin: 'top center' },
+            { scaleY: 1, opacity: 0.8, duration: 2.2, repeat: -1, yoyo: true, ease: 'power2.inOut' },
+          )
+        }
       }
+
+      let rafId: number
+      const poll = () => {
+        const done = getComputedStyle(document.documentElement)
+          .getPropertyValue('--hero-animation-complete').trim()
+        if (done === '1') {
+          runEntryTimeline()
+        } else {
+          rafId = requestAnimationFrame(poll)
+        }
+      }
+      rafId = requestAnimationFrame(poll)
+      return () => cancelAnimationFrame(rafId)
     },
     { scope: sectionRef, dependencies: [prefersReducedMotion] },
   )
 
-  // ── Scroll exit: --hero-progress + fade out ──
+  // ── Scroll exit ─────────────────────────────────────────────────────────
   useGSAP(
     () => {
       if (!sectionRef.current) return
@@ -115,10 +141,7 @@ export function HeroSection() {
         scrub: true,
         onUpdate: (self) => {
           document.documentElement.style.setProperty('--hero-progress', String(self.progress))
-          document.documentElement.style.setProperty(
-            '--hero-progress-pct',
-            `${self.progress * 100}%`,
-          )
+          document.documentElement.style.setProperty('--hero-progress-pct', `${self.progress * 100}%`)
         },
         onLeaveBack: () => {
           document.documentElement.style.setProperty('--hero-progress', '0')
@@ -128,7 +151,6 @@ export function HeroSection() {
 
       if (prefersReducedMotion) return
 
-      // Content fade out
       gsap.to(contentRef.current, {
         opacity: 0,
         y: -40,
@@ -141,7 +163,20 @@ export function HeroSection() {
         },
       })
 
-      // HUD fade out (slightly earlier)
+      const ctaEl = ctaWrapperRef.current
+      if (ctaEl) {
+        gsap.to(ctaEl, {
+          opacity: 0,
+          ease: 'power2.in',
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: 'top top',
+            end: '35% top',
+            scrub: true,
+          },
+        })
+      }
+
       const hudEls = [hudTopLeftRef.current, hudTopRightRef.current, hudBottomLeftRef.current].filter(Boolean)
       if (hudEls.length) {
         gsap.to(hudEls, {
@@ -159,38 +194,59 @@ export function HeroSection() {
     { scope: sectionRef, dependencies: [prefersReducedMotion] },
   )
 
+  useEffect(() => {
+    return () => {
+      document.documentElement.style.removeProperty('--hero-animation-complete')
+      document.documentElement.style.removeProperty('--hero-progress')
+      document.documentElement.style.removeProperty('--hero-progress-pct')
+    }
+  }, [])
+
   return (
     <>
-      {!prefersReducedMotion && <HeroCanvas />}
-
-      <section
-        ref={sectionRef}
-        id="hero"
-        aria-label="Hero"
-        className="relative z-[1] flex min-h-screen flex-col items-center justify-end"
-        style={{ paddingBottom: 'clamp(4rem, 8vh, 6rem)' }}
-      >
-        {/* Reduced motion fallback: static name in DOM */}
-        {prefersReducedMotion && (
+      {prefersReducedMotion ? (
+        // ── Reduced motion: static left-aligned layout ─────────────────
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 0,
+            backgroundColor: 'var(--bg-primary)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            paddingLeft: '8vw',
+          }}
+          aria-hidden="true"
+        >
           <h1
-            className="mb-8 select-none text-center"
             style={{
               fontFamily: 'var(--font-display)',
               fontSize: 'var(--text-hero)',
               fontWeight: 700,
               color: 'var(--text-primary)',
-              textShadow: '0 0 40px var(--accent-glow)',
               margin: 0,
+              lineHeight: 1.05,
             }}
           >
-            MATTEO
+            MATTEO<br />
+            <span style={{ paddingLeft: '1.5ch' }}>RAINERI</span>
           </h1>
-        )}
+        </div>
+      ) : (
+        <HeroCanvas />
+      )}
 
-        {/* ── HUD Elements (desktop only) ─────────────────── */}
+      <section
+        ref={sectionRef}
+        id="hero"
+        aria-label="Hero"
+        className="relative z-[1] flex min-h-screen flex-col"
+        style={{ paddingBottom: 'clamp(4rem, 8vh, 6rem)' }}
+      >
+        {/* ── HUD (desktop only) ─────────────────────────────────────── */}
         {isDesktop && (
           <>
-            {/* Top-left: coordinates */}
             <div
               ref={hudTopLeftRef}
               style={{
@@ -203,31 +259,14 @@ export function HeroSection() {
                 gap: '0.25rem',
               }}
             >
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '0.65rem',
-                  letterSpacing: '0.1em',
-                  color: 'var(--text-secondary)',
-                  opacity: 0.4,
-                }}
-              >
-                45.4642° N, 9.1900° E
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', color: 'var(--text-secondary)', opacity: 0.4 }}>
+                45°28′N 9°10′E
               </span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '0.65rem',
-                  letterSpacing: '0.1em',
-                  color: 'var(--accent)',
-                  opacity: 0.3,
-                }}
-              >
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', color: 'var(--accent)', opacity: 0.3 }}>
                 MILANO, IT
               </span>
             </div>
 
-            {/* Top-right: year / status */}
             <div
               ref={hudTopRightRef}
               style={{
@@ -239,33 +278,19 @@ export function HeroSection() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.25rem',
+                alignItems: 'flex-end',
               }}
             >
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '0.65rem',
-                  letterSpacing: '0.1em',
-                  color: 'var(--text-secondary)',
-                  opacity: 0.4,
-                }}
-              >
-                &copy; 2026
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', color: 'var(--text-secondary)', opacity: 0.4 }}>
+                © 2025
               </span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '0.65rem',
-                  letterSpacing: '0.1em',
-                  color: 'var(--accent)',
-                  opacity: 0.3,
-                }}
-              >
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', color: 'var(--accent)', opacity: 0.3, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#00FF88', display: 'inline-block', boxShadow: '0 0 6px #00FF88' }} />
                 AVAILABLE FOR WORK
               </span>
             </div>
 
-            {/* Bottom-left: scroll progress */}
+            {/* Bottom-left: scroll progress bar */}
             <div
               ref={hudBottomLeftRef}
               style={{
@@ -278,110 +303,71 @@ export function HeroSection() {
                 gap: '0.5rem',
               }}
             >
-              <div
-                style={{
-                  width: '1px',
-                  height: '3rem',
-                  backgroundColor: 'rgba(255,255,255,0.06)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
+              <div style={{ width: '4px', height: '3rem', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '2px', position: 'relative', overflow: 'hidden' }}>
                 <div
                   style={{
                     width: '100%',
                     height: 'var(--hero-progress-pct, 0%)',
                     backgroundColor: 'var(--accent)',
-                    opacity: 0.5,
+                    opacity: 0.6,
                     transition: 'height 0.1s linear',
                   }}
                 />
               </div>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '0.6rem',
-                  letterSpacing: '0.1em',
-                  color: 'var(--text-secondary)',
-                  opacity: 0.3,
-                }}
-              >
-                SCROLL
-              </span>
             </div>
           </>
         )}
 
-        {/* ── Main content ────────────────────────────────── */}
-        <div ref={contentRef} className="flex flex-col items-center">
-          {/* Terminal-style description */}
+        {/* ── Main content: subtitle + tagline, bottom-left ───────────── */}
+        <div
+          ref={contentRef}
+          style={{
+            position: 'absolute',
+            bottom: 'clamp(4rem, 8vh, 6rem)',
+            left: 0,
+            paddingLeft: '8vw',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-sm)',
+          }}
+        >
+          {/* Terminal line */}
           <div
             ref={subtitleRef}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.6rem',
-              opacity: 0,
-            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', opacity: 0 }}
           >
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 'var(--text-sm)',
-                color: 'var(--accent)',
-                opacity: 0.7,
-              }}
-            >
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', color: 'var(--accent)', opacity: 0.7 }}>
               &gt;
             </span>
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 'var(--text-sm)',
-                fontWeight: 400,
-                color: 'var(--text-secondary)',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-              }}
-            >
-              Ingegneria Informatica &middot; Frontend &amp; Creative Dev
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', fontWeight: 400, color: 'var(--text-secondary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              COMPUTER ENGINEERING · FRONTEND &amp; CREATIVE DEV
             </span>
             <span
               className="hero-cursor"
-              style={{
-                display: 'inline-block',
-                width: '2px',
-                height: '1em',
-                backgroundColor: 'var(--accent)',
-              }}
+              style={{ display: 'inline-block', width: '2px', height: '1em', backgroundColor: 'var(--accent)' }}
             />
           </div>
 
-          {/* Tagline — word-by-word reveal */}
+          {/* Tagline */}
           <p
             ref={taglineRef}
             style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: 'var(--text-xl)',
-              fontWeight: 500,
-              color: 'var(--accent)',
-              margin: '0.75rem 0 0',
+              fontFamily: 'var(--font-display)',
+              fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-2xl)',
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              margin: 0,
               opacity: 0,
               display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              gap: '0 0.35em',
+              flexDirection: 'column',
+              gap: '0.1em',
             }}
           >
             {TAGLINE_WORDS.map((word, i) => (
               <span
                 key={word}
                 ref={(el) => { taglineWordsRef.current[i] = el }}
-                style={{
-                  display: 'inline-block',
-                  opacity: 0,
-                  transform: 'translateY(12px)',
-                }}
+                style={{ display: 'block', opacity: 0, transform: 'translateY(12px)' }}
               >
                 {word}
               </span>
@@ -389,31 +375,68 @@ export function HeroSection() {
           </p>
         </div>
 
-        {/* Scroll indicator */}
+        {/* ── Scroll indicator + CTA: bottom-right ───────────────────── */}
         <div
-          ref={scrollIndicatorRef}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0"
-          aria-label="Scroll down"
+          style={{
+            position: 'absolute',
+            bottom: 'clamp(4rem, 8vh, 6rem)',
+            right: '8vw',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: 'var(--space-lg)',
+          }}
         >
-          <span
-            className="uppercase"
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '10px',
-              letterSpacing: '2.5px',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            scroll
-          </span>
+          {/* Scroll indicator */}
           <div
-            ref={scrollLineRef}
-            className="w-px"
-            style={{
-              height: '36px',
-              background: 'linear-gradient(to bottom, var(--accent), transparent)',
-            }}
-          />
+            ref={scrollIndicatorRef}
+            className="flex flex-col items-center gap-2 opacity-0"
+            aria-label="Scroll down"
+          >
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '2.5px', color: 'var(--text-secondary)' }}>
+              SCROLL
+            </span>
+            <div
+              ref={scrollLineRef}
+              className="w-px"
+              style={{ height: '36px', background: 'linear-gradient(to bottom, var(--accent), transparent)' }}
+            />
+          </div>
+
+          {/* CTA button — GSAP wrapper handles entry/exit, motion.button handles hover */}
+          <div ref={ctaWrapperRef} style={{ opacity: 0 }}>
+            <motion.button
+              onClick={() => scrollToSection('#contact')}
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'var(--text-base)',
+                fontWeight: 500,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: 'var(--accent)',
+                border: '1px solid var(--accent)',
+                borderRadius: 0,
+                background: 'transparent',
+                padding: 'var(--space-sm) var(--space-lg)',
+                cursor: 'pointer',
+              }}
+              whileHover={{
+                backgroundColor: 'var(--accent-dim)',
+                boxShadow: '0 0 20px var(--accent-glow)',
+              }}
+              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5em' }}>
+                Get in touch
+                <motion.span
+                  whileHover={{ x: 4 }}
+                  transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                >
+                  →
+                </motion.span>
+              </span>
+            </motion.button>
+          </div>
         </div>
       </section>
     </>
