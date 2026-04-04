@@ -12,23 +12,15 @@ Ogni sezione dimostra una competenza attraverso la propria implementazione.
 
 ---
 
-## Current Phase: PHASE 1 — FOUNDATIONS
+## Current Phase: PHASE 3 — CORE SECTIONS
 
-Build the project skeleton with all systems wired correctly before any visual work.
+Phase 2 (Hero) complete: particle network (~4000 particles, InstancedMesh) with distance-based cyan edges (LineSegments, capped at 3000 visible), 5s convergence → crystallization → settle sequence triggered on first mouse move, chrome PBR text via troika-three-text, GSAP DOM layer (tagline + terminal prompt), ScrollTrigger scroll exit, mobile fallback (1500 particles, edges disabled, 1.5s auto-trigger). TypeScript clean, tested at 375/768/1440px, reduced motion path works.
 
-### Phase 1 Checklist
-- [ ] Vite + React + TypeScript strict setup
-- [ ] Tailwind CSS 4 configured with design tokens
-- [ ] CSS custom properties (tokens.css) — palette, typography scale, spacing
-- [ ] Lenis smooth scroll initialized
-- [ ] GSAP + ScrollTrigger integrated with Lenis
-- [ ] ScrollContext provider (exposes scroll position + velocity)
-- [ ] useGSAP hook with automatic cleanup
-- [ ] usePrefersReducedMotion hook
-- [ ] Layout shell: ScrollContainer wrapping 5 empty sections
-- [ ] Fonts loaded: Clash Display (Fontshare), Inter (Google), JetBrains Mono (Google)
-- [ ] Base typography styles applied
-- [ ] Basic section structure visible on scroll
+**Decision:** troika-three-text used instead of FontLoader JSON — handles SDF rendering at runtime without requiring a pre-baked font file.
+
+### Phase 3 Focus: About, Projects, Contact
+
+Build the three content sections. Hero is the centrepiece; these sections must match its cinematic quality while keeping their own motion identity.
 
 ---
 
@@ -100,7 +92,7 @@ src/
 - Canvas is positioned fixed or absolute — overlays the page, doesn't displace it
 - Use `@react-three/fiber` hooks (`useFrame`, `useThree`)
 - Use `@react-three/drei` for common abstractions
-- Performance: `frameloop="demand"` when possible, `dpr={[1, 1.5]}`
+- Performance: `frameloop="always"` for sections with continuous animation (hero), `frameloop="demand"` for static/on-interaction scenes. `dpr={[1, 1.5]}`
 - Pointer events: Use R3F's event system, not DOM events
 
 ### Animation Constants (use these everywhere)
@@ -179,7 +171,7 @@ export const STAGGER = {
 
 | # | Section | Status | Key Tech |
 |---|---------|--------|----------|
-| 1 | Hero | 🔲 Not started | R3F, GSAP timeline |
+| 1 | Hero | ✅ Complete | R3F InstancedMesh, LineSegments edges, troika-three-text chrome PBR, GSAP DOM layer, ScrollTrigger exit |
 | 2 | About | 🔲 Not started | GSAP ScrollTrigger, text split |
 | 3 | Skills (Lab) | 🔲 Not started | Interactive demos, creative coding |
 | 4 | Projects | 🔲 Not started | GSAP, Framer Motion |
@@ -195,6 +187,10 @@ export const STAGGER = {
 - Three.js: dispose geometries/materials/textures on unmount
 - Bundle: code-split Three.js and heavy sections with `React.lazy`
 - Target: 60fps scroll on mid-range devices
+- InstancedMesh for particle systems — never individual meshes for >100 identical objects
+- HDRI/environment maps: use lightweight (512px or procedural) for reflections
+- Mobile particle cap: reduce count by 60%+ and disable edge rendering
+- Chrome/PBR materials: limit to 1-2 meshes with MeshPhysicalMaterial per scene
 
 ---
 
