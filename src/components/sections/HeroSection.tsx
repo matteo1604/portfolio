@@ -234,7 +234,7 @@ export function HeroSection() {
           </h1>
         </div>
       ) : (
-        <HeroCanvas />
+        <HeroCanvas isMobile={isMobile} />
       )}
 
       <section

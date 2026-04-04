@@ -1,47 +1,40 @@
 import { Canvas } from '@react-three/fiber'
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
-import { NodeNetwork } from './NodeNetwork'
-import { LiquidDistortion } from './LiquidDistortion'
+import { Environment } from '@react-three/drei'
+import { Suspense } from 'react'
+import { HeroScene } from './HeroScene'
 
-/**
- * HeroCanvas — position:fixed full-viewport Canvas.
- * Layer 0: subtle NodeNetwork (texture mode)
- * Layer 1: LiquidDistortion fullscreen quad with "MATTEO" shader
- */
-export function HeroCanvas() {
+interface Props {
+  isMobile: boolean
+}
+
+export function HeroCanvas({ isMobile }: Props) {
   return (
     <div
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 0,
-        pointerEvents: 'none',
+        pointerEvents: 'auto',
         backgroundColor: 'var(--bg-primary)',
       }}
       aria-hidden="true"
     >
       <Canvas
         dpr={[1, 1.5]}
-        camera={{ position: [0, 0, 12], fov: 60 }}
+        camera={{ position: [0, 0, 14], fov: 55 }}
         gl={{
-          antialias: false,
+          antialias: true,
           alpha: false,
           powerPreference: 'high-performance',
         }}
+        frameloop="always"
         style={{ width: '100%', height: '100%' }}
       >
-        {/* Layer 0: subtle node network behind everything */}
-        <NodeNetwork />
-        {/* Layer 1: liquid distortion text on top */}
-        <LiquidDistortion />
-        <EffectComposer>
-          <Bloom
-            intensity={0.4}
-            luminanceThreshold={0.3}
-            luminanceSmoothing={0.9}
-          />
-          <Vignette offset={0.3} darkness={0.7} />
-        </EffectComposer>
+        <Suspense fallback={null}>
+          {/* Environment for chrome reflections — city preset gives cool cyan/blue tones */}
+          <Environment preset="city" background={false} />
+          <HeroScene isMobile={isMobile} />
+        </Suspense>
       </Canvas>
     </div>
   )
