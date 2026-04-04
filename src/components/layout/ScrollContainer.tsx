@@ -3,6 +3,7 @@ import Lenis from 'lenis'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ScrollContext } from './ScrollContext'
+import { setLenis } from '@/lib/lenis'
 import type { ScrollState } from '@/types'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -27,6 +28,7 @@ export function ScrollContainer({ children }: ScrollContainerProps) {
       smoothWheel: true,
     })
 
+    setLenis(lenis)
     lenisRef.current = lenis
 
     // Wire Lenis to GSAP ticker
