@@ -17,21 +17,22 @@ const font = opentype.parse(buffer.buffer)
 const CHARS = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 function glyphToThree(glyph) {
+  const bb = glyph.getBoundingBox()
   let o = ''
   if (glyph.path && glyph.path.commands.length > 0) {
     for (const cmd of glyph.path.commands) {
       switch (cmd.type) {
         case 'M': o += `m ${Math.round(cmd.x)} ${Math.round(cmd.y)} `; break
         case 'L': o += `l ${Math.round(cmd.x)} ${Math.round(cmd.y)} `; break
-        case 'Q': o += `q ${Math.round(cmd.x1)} ${Math.round(cmd.y1)} ${Math.round(cmd.x)} ${Math.round(cmd.y)} `; break
-        case 'C': o += `b ${Math.round(cmd.x1)} ${Math.round(cmd.y1)} ${Math.round(cmd.x2)} ${Math.round(cmd.y2)} ${Math.round(cmd.x)} ${Math.round(cmd.y)} `; break
+        case 'Q': o += `q ${cmd.x1} ${cmd.y1} ${cmd.x} ${cmd.y} `; break
+        case 'C': o += `b ${cmd.x1} ${cmd.y1} ${cmd.x2} ${cmd.y2} ${cmd.x} ${cmd.y} `; break
         case 'Z': o += 'z '; break
       }
     }
   }
   return {
-    x_min: Math.round(glyph.xMin ?? 0),
-    x_max: Math.round(glyph.xMax ?? 0),
+    x_min: Math.round(bb.x1),
+    x_max: Math.round(bb.x2),
     ha: Math.round(glyph.advanceWidth ?? 0),
     o: o.trim(),
   }
@@ -43,6 +44,7 @@ for (const char of CHARS) {
 }
 
 const output = {
+  type: 'font',
   glyphs,
   familyName: font.names.fontFamily?.en ?? 'Clash Display',
   ascender: Math.round(font.ascender),
