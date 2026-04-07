@@ -32,7 +32,7 @@ export function HeroCanvas({ isMobile }: Props) {
       >
         <Suspense fallback={null}>
           {/* Environment for chrome reflections — city preset gives cool cyan/blue tones */}
-          <Environment preset="city" background={false} />
+          <Environment preset="night" background={false} />
           <HeroScene isMobile={isMobile} />
         </Suspense>
       </Canvas>

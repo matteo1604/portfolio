@@ -8,10 +8,32 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { EASING, DURATION } from '@/lib/animations'
 import { scrollToSection } from '@/lib/lenis'
 import { HeroCanvas } from '@/components/three/HeroCanvas'
+import { useState } from 'react'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const TAGLINE_WORDS = ["I don't build websites.", 'I build experiences.'] as const
+
+const ScrambleText = ({ text }: { text: string }) => {
+  const [display, setDisplay] = useState(text.replace(/./g, '_'))
+  
+  useEffect(() => {
+    let iter = 0
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*_'
+    const interval = setInterval(() => {
+      setDisplay(text.split('').map((c, i) => {
+        if (i < iter) return c
+        if (c === ' ') return ' '
+        return chars[Math.floor(Math.random() * chars.length)]
+      }).join(''))
+      if (iter >= text.length) clearInterval(interval)
+      iter += 1 / 3
+    }, 30)
+    return () => clearInterval(interval)
+  }, [text])
+  
+  return <>{display}</>
+}
 
 export function HeroSection() {
   const sectionRef         = useRef<HTMLElement>(null)
@@ -256,13 +278,13 @@ export function HeroSection() {
                 opacity: 0,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '0.25rem',
+                gap: '0.3rem',
               }}
             >
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', color: 'var(--text-secondary)', opacity: 0.4 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.12em', color: 'var(--text-secondary)', opacity: 0.6 }}>
                 45°28′N 9°10′E
               </span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', color: 'var(--accent)', opacity: 0.3 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.12em', color: 'var(--accent)', opacity: 0.5 }}>
                 MILANO, IT
               </span>
             </div>
@@ -281,11 +303,11 @@ export function HeroSection() {
                 alignItems: 'flex-end',
               }}
             >
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', color: 'var(--text-secondary)', opacity: 0.4 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.12em', color: 'var(--text-secondary)', opacity: 0.6 }}>
                 © 2025
               </span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', color: 'var(--accent)', opacity: 0.3, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#00FF88', display: 'inline-block', boxShadow: '0 0 6px #00FF88' }} />
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.12em', color: 'var(--accent)', opacity: 0.5, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#00FF88', display: 'inline-block', boxShadow: '0 0 8px #00FF88' }} />
                 AVAILABLE FOR WORK
               </span>
             </div>
@@ -321,30 +343,40 @@ export function HeroSection() {
         {/* ── Main content: subtitle + tagline, bottom-left ───────────── */}
         <div
           ref={contentRef}
+          className="scanlines"
           style={{
             position: 'absolute',
             bottom: 'clamp(4rem, 8vh, 6rem)',
-            left: 0,
-            paddingLeft: '8vw',
+            left: 'clamp(1.5rem, 3vw, 2.5rem)',
+            paddingLeft: '1.5rem',
+            paddingRight: '3rem',
+            paddingTop: '1.25rem',
+            paddingBottom: '1.25rem',
             display: 'flex',
             flexDirection: 'column',
-            gap: 'var(--space-sm)',
+            gap: '0.8rem',
+            // Tech/Hacker terminal panel look
+            background: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            borderLeft: '2px solid var(--accent)',
+            boxShadow: 'inset 20px 0 40px -20px rgba(0, 255, 136, 0.1)',
           }}
         >
           {/* Terminal line */}
           <div
             ref={subtitleRef}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', opacity: 0 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', opacity: 0, position: 'relative', zIndex: 2 }}
           >
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', color: 'var(--accent)', opacity: 0.7 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', color: 'var(--accent-magenta)', opacity: 0.9 }}>
               &gt;
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', fontWeight: 400, color: 'var(--text-secondary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', fontWeight: 400, color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               COMPUTER ENGINEERING · FRONTEND &amp; CREATIVE DEV
             </span>
             <span
               className="hero-cursor"
-              style={{ display: 'inline-block', width: '2px', height: '1em', backgroundColor: 'var(--accent)' }}
+              style={{ display: 'inline-block', width: '2px', height: '1.1em', backgroundColor: 'var(--accent)' }}
             />
           </div>
 
@@ -352,15 +384,20 @@ export function HeroSection() {
           <p
             ref={taglineRef}
             style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-2xl)',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: isMobile ? '0.9rem' : '1.1rem',
+              fontWeight: 500,
+              letterSpacing: '0.05em',
+              color: 'var(--accent)',
               margin: 0,
               opacity: 0,
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.1em',
+              gap: '0.4em',
+              textShadow: '0 0 8px rgba(0, 212, 255, 0.4)',
+              textTransform: 'uppercase',
+              position: 'relative',
+              zIndex: 2,
             }}
           >
             {TAGLINE_WORDS.map((word, i) => (
@@ -369,7 +406,7 @@ export function HeroSection() {
                 ref={(el) => { taglineWordsRef.current[i] = el }}
                 style={{ display: 'block', opacity: 0, transform: 'translateY(12px)' }}
               >
-                {word}
+                <ScrambleText text={word} />
               </span>
             ))}
           </p>
@@ -385,6 +422,8 @@ export function HeroSection() {
             flexDirection: 'column',
             alignItems: 'flex-end',
             gap: 'var(--space-lg)',
+            zIndex: 10,
+            pointerEvents: 'auto',
           }}
         >
           {/* Scroll indicator */}
@@ -393,48 +432,51 @@ export function HeroSection() {
             className="flex flex-col items-center gap-2 opacity-0"
             aria-label="Scroll down"
           >
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '2.5px', color: 'var(--text-secondary)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '3px', color: 'var(--text-secondary)', opacity: 0.8 }}>
               SCROLL
             </span>
             <div
               ref={scrollLineRef}
               className="w-px"
-              style={{ height: '36px', background: 'linear-gradient(to bottom, var(--accent), transparent)' }}
+              style={{ height: '44px', background: 'linear-gradient(to bottom, var(--accent), transparent)' }}
             />
           </div>
 
-          {/* CTA button — GSAP wrapper handles entry/exit, motion.button handles hover */}
+          {/* CTA button — Holographic Hollow styled */}
           <div ref={ctaWrapperRef} style={{ opacity: 0 }}>
             <motion.button
               onClick={() => scrollToSection('#contact')}
               style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 'var(--text-base)',
-                fontWeight: 500,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                letterSpacing: '0.15em',
                 color: 'var(--accent)',
+                backgroundColor: 'rgba(0, 212, 255, 0.03)',
                 border: '1px solid var(--accent)',
-                borderRadius: 0,
-                background: 'transparent',
-                padding: 'var(--space-sm) var(--space-lg)',
+                padding: '1rem 2rem',
                 cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                boxShadow: '0 0 15px rgba(0, 212, 255, 0.2) inset, 0 0 20px rgba(0, 212, 255, 0.2)',
               }}
               whileHover={{
-                backgroundColor: 'var(--accent-dim)',
-                boxShadow: '0 0 20px var(--accent-glow)',
+                backgroundColor: 'var(--accent)',
+                color: 'var(--bg-primary)',
+                boxShadow: '0 0 30px rgba(0, 212, 255, 0.6) inset, 0 0 40px rgba(0, 212, 255, 0.6)',
               }}
-              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+              transition={{ duration: 0.3 }}
             >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5em' }}>
-                Get in touch
-                <motion.span
-                  whileHover={{ x: 4 }}
-                  transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-                >
-                  →
-                </motion.span>
-              </span>
+              <span style={{ opacity: 0.6, fontWeight: 700 }}>//</span>
+              <span>INITIATE_CONTACT</span>
+              <motion.span
+                animate={{ opacity: [1, 0] }}
+                transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+                style={{ fontWeight: 700 }}
+              >
+                _
+              </motion.span>
             </motion.button>
           </div>
         </div>

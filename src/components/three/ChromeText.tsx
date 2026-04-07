@@ -1,119 +1,102 @@
-import { useRef, useEffect, Suspense } from 'react'
-import { useFrame } from '@react-three/fiber'
-import { Text3D } from '@react-three/drei'
+import { forwardRef, useImperativeHandle, useRef, useMemo } from 'react'
+import { useThree } from '@react-three/fiber'
+import { Text, Center } from '@react-three/drei'
 import * as THREE from 'three'
 
-const FONT_URL = '/fonts/clash_display_bold.typeface.json'
-
 export interface ChromeTextRef {
-  setVisible:        (v: boolean) => void
-  setOpacity:        (v: number)  => void
+  setVisible: (v: boolean) => void
+  setOpacity: (v: number) => void
+  setScale: (v: number) => void
   setMouseInfluence: (x: number, y: number) => void
   setScrollProgress: (v: number) => void
-  setScale:          (v: number)  => void
 }
 
-interface Props {
-  chromeRef: React.RefObject<ChromeTextRef | null>
-}
+export const ChromeText = forwardRef<ChromeTextRef, {}>((_, ref) => {
+  const groupRef = useRef<THREE.Group>(null)
+  
+  const mat1Ref = useRef<THREE.MeshPhysicalMaterial>(null)
+  const mat2Ref = useRef<THREE.MeshPhysicalMaterial>(null)
+  
+  const { size } = useThree()
+  
+  const isMobile = size.width < 768
+  const baseScale = isMobile ? 0.45 : 1.0
 
-function ChromeTextInner({ chromeRef }: Props) {
-  const groupRef       = useRef<THREE.Group>(null)
-  const mat1Ref        = useRef<THREE.MeshPhysicalMaterial>(null)
-  const mat2Ref        = useRef<THREE.MeshPhysicalMaterial>(null)
-  const opacityRef     = useRef(0)
-  const scaleRef       = useRef(1)
-  const mouseRef       = useRef<[number, number]>([0, 0])
-  const scrollRef      = useRef(0)
-  const targetRotRef   = useRef<[number, number]>([0, 0])
-  const currentRotRef  = useRef<[number, number]>([0, 0])
-
-  useEffect(() => {
-    ;(chromeRef as React.MutableRefObject<ChromeTextRef>).current = {
-      setVisible:        (v) => { if (groupRef.current) groupRef.current.visible = v },
-      setOpacity:        (v) => { opacityRef.current = v },
-      setMouseInfluence: (x, y) => { mouseRef.current = [x, y] },
-      setScrollProgress: (v) => { scrollRef.current = v },
-      setScale:          (v) => { scaleRef.current = v },
+  useImperativeHandle(ref, () => ({
+    setVisible: (v) => {
+      if (groupRef.current) groupRef.current.visible = v
+    },
+    setOpacity: (v) => {
+      if (mat1Ref.current) mat1Ref.current.opacity = v
+      if (mat2Ref.current) mat2Ref.current.opacity = v
+    },
+    setScale: (v) => {
+      if (groupRef.current) {
+        groupRef.current.scale.setScalar(v * baseScale)
+      }
+    },
+    setMouseInfluence: (x, y) => {
+      if (groupRef.current) {
+        groupRef.current.rotation.y += (x * 0.08 - groupRef.current.rotation.y) * 0.08
+        groupRef.current.rotation.x += (-y * 0.05 - groupRef.current.rotation.x) * 0.08
+      }
+    },
+    setScrollProgress: (v) => {
+      if (groupRef.current) {
+        groupRef.current.position.y = v * 5.0
+      }
     }
-  }, [chromeRef])
+  }))
 
-  useFrame((_, delta) => {
-    const opacity = opacityRef.current * Math.max(0, 1 - scrollRef.current * 2)
-    if (mat1Ref.current) mat1Ref.current.opacity = opacity
-    if (mat2Ref.current) mat2Ref.current.opacity = opacity
-
-    const [mx, my] = mouseRef.current
-    const MAX_ROT = (3 * Math.PI) / 180
-    targetRotRef.current[0] = -my * MAX_ROT
-    targetRotRef.current[1] =  mx * MAX_ROT
-
-    const speed = 1 - Math.pow(0.04, delta)
-    currentRotRef.current[0] += (targetRotRef.current[0] - currentRotRef.current[0]) * speed
-    currentRotRef.current[1] += (targetRotRef.current[1] - currentRotRef.current[1]) * speed
-
-    if (groupRef.current) {
-      groupRef.current.scale.setScalar(scaleRef.current)
-      groupRef.current.rotation.x = currentRotRef.current[0]
-      groupRef.current.rotation.y = currentRotRef.current[1]
-      groupRef.current.position.z = scrollRef.current * 4
-    }
-  })
-
-  const chromeMaterialProps = {
-    color: '#E0E0E8' as const,
-    metalness: 1,
-    roughness: 0.04,
-    envMapIntensity: 2.8,
-    clearcoat: 0.9,
-    clearcoatRoughness: 0.04,
+  // Liquid Chrome — high metalness with self-illumination so it never
+  // vanishes against dark backgrounds. Clearcoat adds the wet gloss layer.
+  const chromeProps = useMemo(() => ({
+    metalness: 1.0,
+    roughness: 0.20,             // Brushed titanium — spreads light evenly
+    envMapIntensity: 3.5,        // Strong environment reflections
+    color: new THREE.Color('#E0E8F0'),  // Bright cool silver base
+    emissive: new THREE.Color('#5A6A7A'), // Brighter self-illumination
+    emissiveIntensity: 0.6,      // Raised — guaranteed visibility on black
+    clearcoat: 1.0,              // Wet lacquer layer on top
+    clearcoatRoughness: 0.08,    // Slightly softer clearcoat
     transparent: true,
     opacity: 0,
-  } as const
+    side: THREE.FrontSide,
+  }), [])
+
+  const textProps = {
+    font: '/fonts/clash-display-bold.woff',
+    fontSize: 3.8,
+    letterSpacing: -0.02,
+    lineHeight: 1,
+    anchorX: 'center' as const,
+    anchorY: 'middle' as const,
+  }
 
   return (
-    <group ref={groupRef} visible={false} renderOrder={1}>
-      {/* MATTEO — top line, left edge at x=-9 */}
-      <group position={[-9, 1.5, 0]}>
-        <Text3D
-          font={FONT_URL}
-          size={2.2}
-          height={0.55}
-          bevelEnabled
-          bevelThickness={0.06}
-          bevelSize={0.07}
-          bevelSegments={10}
-          curveSegments={64}
-        >
-          MATTEO
-          <meshPhysicalMaterial ref={mat1Ref} {...chromeMaterialProps} />
-        </Text3D>
+    <group ref={groupRef} visible={false} position={[0, 0, 3]}>
+      {/* Dedicated rim lights to ensure the chrome always catches light */}
+      <pointLight position={[-6, 3, 6]} intensity={3.0} color="#FFFFFF" distance={20} decay={2} />
+      <pointLight position={[6, -2, 6]} intensity={2.0} color="#B0D0FF" distance={20} decay={2} />
+      <pointLight position={[0, 0, 8]} intensity={1.5} color="#E0F0FF" distance={15} decay={2} />
+
+      <group position={[0, 1.4, 0]}>
+        <Center>
+          <Text {...textProps} outlineWidth={0.03} outlineColor="#8899AA">
+            MATTEO
+            <meshPhysicalMaterial ref={mat1Ref} {...chromeProps} />
+          </Text>
+        </Center>
       </group>
 
-      {/* RAINERI — bottom line, indented 1.5 units right of MATTEO */}
-      <group position={[-7.5, -1.0, 0]}>
-        <Text3D
-          font={FONT_URL}
-          size={1.8}
-          height={0.45}
-          bevelEnabled
-          bevelThickness={0.05}
-          bevelSize={0.055}
-          bevelSegments={8}
-          curveSegments={18}
-        >
-          RAINERI
-          <meshPhysicalMaterial ref={mat2Ref} {...chromeMaterialProps} />
-        </Text3D>
+      <group position={[0, -1.4, 0]}>
+        <Center>
+          <Text {...textProps} outlineWidth={0.03} outlineColor="#8899AA">
+            RAINERI
+            <meshPhysicalMaterial ref={mat2Ref} {...chromeProps} />
+          </Text>
+        </Center>
       </group>
     </group>
   )
-}
-
-export function ChromeText({ chromeRef }: Props) {
-  return (
-    <Suspense fallback={null}>
-      <ChromeTextInner chromeRef={chromeRef} />
-    </Suspense>
-  )
-}
+})

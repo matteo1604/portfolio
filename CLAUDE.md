@@ -14,7 +14,7 @@ Ogni sezione dimostra una competenza attraverso la propria implementazione.
 
 ## Current Phase: PHASE 3 — CORE SECTIONS
 
-Phase 2 (Hero) complete: particle network (~4000 particles, InstancedMesh) with distance-based cyan edges (LineSegments, capped at 3000 visible), 5s convergence → crystallization → settle sequence triggered on first mouse move, chrome PBR text via troika-three-text, GSAP DOM layer (tagline + terminal prompt), ScrollTrigger scroll exit, mobile fallback (1500 particles, edges disabled, 1.5s auto-trigger). TypeScript clean, tested at 375/768/1440px, reduced motion path works.
+Phase 2 (Hero) complete: dense fluid particle sphere (35,000 points, custom ShaderMaterial with Simplex 3D noise torsion, dynamic mouse vortex repulsion, cinematic fake DOF, and iridescent fluid color mapping), chrome text via `@react-three/drei/Text` (troika-three-text SDF, local WOFF), GSAP DOM layer, ScrollTrigger scroll exit, mobile fallback (reduced motion handling). TypeScript clean, tested at 375/768/1440px.
 
 **Decision:** troika-three-text used instead of FontLoader JSON — handles SDF rendering at runtime without requiring a pre-baked font file.
 
@@ -171,7 +171,7 @@ export const STAGGER = {
 
 | # | Section | Status | Key Tech |
 |---|---------|--------|----------|
-| 1 | Hero | ✅ Complete | R3F InstancedMesh, LineSegments edges, troika-three-text chrome PBR, GSAP DOM layer, ScrollTrigger exit |
+| 1 | Hero | ✅ Complete | Custom ShaderMaterial Points (35k), Troika SDF Text (woff), GSAP DOM layer, ScrollTrigger exit |
 | 2 | About | 🔲 Not started | GSAP ScrollTrigger, text split |
 | 3 | Skills (Lab) | 🔲 Not started | Interactive demos, creative coding |
 | 4 | Projects | 🔲 Not started | GSAP, Framer Motion |

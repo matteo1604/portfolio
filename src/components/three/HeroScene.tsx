@@ -1,9 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { NebulaBackground } from './NebulaBackground'
-import { StarField } from './StarField'
-import { ShootingStars } from './ShootingStars'
+import { ParticleSphere } from './ParticleSphere'
 import { ChromeText, type ChromeTextRef } from './ChromeText'
 
 type Phase = 'idle' | 'converging' | 'crystallizing' | 'chrome_in' | 'settled'
@@ -13,12 +11,12 @@ interface Props {
 }
 
 export function HeroScene({ isMobile }: Props) {
-  const { size, camera } = useThree()
+  const { camera } = useThree()
 
   const phaseRef       = useRef<Phase>('idle')
   const triggerTimeRef = useRef<number | null>(null)
-
-  const chromeApiRef   = useRef<ChromeTextRef | null>(null)
+  
+  const chromeApiRef   = useRef<ChromeTextRef>(null)
 
   // Invisible plane at z=0 for mouse raycasting (used by ChromeText tilt)
   const planeMeshRef = useRef<THREE.Mesh>(null)
@@ -66,14 +64,7 @@ export function HeroScene({ isMobile }: Props) {
       if (hits.length > 0) mouseWorld.current.copy(hits[0].point)
     }
 
-    const mx = mouseWorld.current.x
-    const my = mouseWorld.current.y
-
-    const scrollProgress = parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue('--hero-progress') || '0'
-    )
-
-    // ── Phase machine — drives ChromeText reveal timing ──────────────────
+    // ── Phase machine ────────────────────────────────────────────────────
     const phase = phaseRef.current
 
     if (phase !== 'idle') {
@@ -82,65 +73,52 @@ export function HeroScene({ isMobile }: Props) {
       const elapsed = t - triggerTimeRef.current
 
       if (phase === 'converging') {
-        // 0 → 3.5s: waiting period before chrome text appears
-        if (elapsed >= 3.5) phaseRef.current = 'crystallizing'
-      }
-
-      if (phase === 'crystallizing') {
-        // 3.5 → 4.0s: brief transition, then reveal chrome text
-        if (elapsed >= 4.0) {
-          chromeApiRef.current?.setVisible(true)
-          chromeApiRef.current?.setOpacity(0)
-          chromeApiRef.current?.setScale(0.96)
+        if (elapsed >= 3.0) {
           phaseRef.current = 'chrome_in'
+          if (chromeApiRef.current) chromeApiRef.current.setVisible(true)
         }
-      }
-
-      if (phase === 'chrome_in') {
-        // 4.0 → 5.5s: scale 0.96→1 + opacity 0→1, expo-out quartic
-        const chromeT = Math.min((elapsed - 4.0) / 1.5, 1)
-        const eased   = 1 - Math.pow(1 - chromeT, 4)
-        chromeApiRef.current?.setOpacity(eased)
-        chromeApiRef.current?.setScale(0.96 + 0.04 * eased)
-        if (elapsed >= 5.5) {
-          chromeApiRef.current?.setOpacity(1)
-          chromeApiRef.current?.setScale(1)
+      } else if (phase === 'chrome_in') {
+        const tChrome = elapsed - 3.0
+        const duration = 2.0
+        const clampedT = Math.min(tChrome / duration, 1.0)
+        
+        const easeOutCubic = 1 - Math.pow(1 - clampedT, 3)
+        
+        if (chromeApiRef.current) {
+          chromeApiRef.current.setOpacity(easeOutCubic)
+          chromeApiRef.current.setScale(1.1 - 0.1 * easeOutCubic)
+        }
+        
+        if (tChrome >= duration) {
           phaseRef.current = 'settled'
           document.documentElement.style.setProperty('--hero-animation-complete', '1')
         }
-      }
-
-      if (phase === 'settled') {
-        chromeApiRef.current?.setOpacity(1)
-        chromeApiRef.current?.setScale(1)
+      } else if (phase === 'settled') {
+        const scrollProgress = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--hero-progress') || '0'
+        )
+        
+        if (chromeApiRef.current && !isMobile) {
+          chromeApiRef.current.setMouseInfluence(mouseNDC.current.x, mouseNDC.current.y)
+        }
+        if (chromeApiRef.current) {
+          chromeApiRef.current.setScrollProgress(scrollProgress)
+          chromeApiRef.current.setOpacity(Math.max(0, 1 - scrollProgress * 1.5))
+        }
       }
     }
-
-    // ── Pass mouse + scroll to ChromeText ────────────────────────────────
-    chromeApiRef.current?.setMouseInfluence(mx / (size.width * 0.5), my / (size.height * 0.5))
-    chromeApiRef.current?.setScrollProgress(scrollProgress)
   })
 
   return (
     <>
-      {/* Lighting — required for MeshPhysicalMaterial chrome reflections */}
       <ambientLight intensity={0.1} />
       <directionalLight position={[5, 5, 5]} intensity={1.8} />
-      {/* Cyan point light behind camera — signature cyan rim on chrome */}
       <pointLight position={[0, 0, 10]} intensity={2.0} color="#00D4FF" />
-      {/* Warm fill from top-left — adds depth to MATTEO side */}
       <pointLight position={[-8, 4, 6]} intensity={0.6} />
 
-      {/* Invisible plane at z=0 for raycasting */}
-      <mesh ref={planeMeshRef} visible={false}>
-        <planeGeometry args={[100, 100]} />
-        <meshBasicMaterial />
-      </mesh>
-
-      <NebulaBackground />
-      <StarField />
-      <ShootingStars />
-      <ChromeText chromeRef={chromeApiRef} />
+      <ParticleSphere isMobile={isMobile} />
+      
+      <ChromeText ref={chromeApiRef} />
     </>
   )
 }
