@@ -5,8 +5,6 @@ import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 
 // ── Shaders ────────────────────────────────────────────────────────────────
-//
-// Per-star aColor baked into geometry → spectral variety with zero CPU cost per frame.
 
 const STAR_VERT = /* glsl */ `
   attribute float aSize;
@@ -21,8 +19,9 @@ const STAR_VERT = /* glsl */ `
   varying vec3  vColor;
 
   void main() {
+    // Wider frequency spread: aPhase drives both offset and rate variation
     float flicker = 1.0 - uTwinkle
-      + uTwinkle * sin(uTime * (0.4 + aPhase * 0.08) + aPhase);
+      + uTwinkle * sin(uTime * (0.3 + aPhase * 0.25) + aPhase * 6.2832);
     vOpacity = aOpacity * clamp(flicker, 0.0, 1.0);
     vColor   = aColor;
 
@@ -44,7 +43,10 @@ const STAR_FRAG = /* glsl */ `
     float dist = length(uv) * 2.0;
     if (dist > 1.0) discard;
 
-    float alpha = smoothstep(1.0, 0.2, dist) * vOpacity * uOpacityMult;
+    // Soft halo + sharp bright core — mimics the diffraction/bloom of a real star
+    float halo  = smoothstep(1.0, 0.2, dist);
+    float core  = pow(max(0.0, 1.0 - dist * 1.8), 3.0) * 0.65;
+    float alpha = min(halo + core, 1.0) * vOpacity * uOpacityMult;
     gl_FragColor = vec4(vColor, alpha);
   }
 `
@@ -77,12 +79,20 @@ const PALETTE_CYAN: ColorEntry[] = [
   { hex: 0x00D4FF, weight: 100 }, // accent cyan
 ]
 
+// Population II stars in the galactic bulge — old, warm-white/yellow
+const PALETTE_BULGE: ColorEntry[] = [
+  { hex: 0xFFF8E8, weight: 40 },  // warm white (old F/G)
+  { hex: 0xFFEE99, weight: 30 },  // light yellow
+  { hex: 0xFFD050, weight: 20 },  // yellow (G giant)
+  { hex: 0xFFB040, weight: 10 },  // orange (K giant)
+]
+
 // ── Layer config ───────────────────────────────────────────────────────────
 
 interface SpiralDef {
-  arms:       number  // number of arms (2 = Milky Way-like)
-  tightness:  number  // how fast the arm curves (rad per theta-rad)
-  spreadFrac: number  // perpendicular scatter as fraction of radius
+  arms:       number
+  tightness:  number
+  spreadFrac: number
 }
 
 interface StarLayerDef {
@@ -174,6 +184,23 @@ const LAYERS: StarLayerDef[] = [
     twinkle:      0.25,
     additive:     true,
   },
+  // Layer 4 — galactic bulge: dense core cluster of old Population II stars
+  {
+    baseCount:    400,
+    sizeRange:    [0.9, 2.4],
+    palette:      PALETTE_BULGE,
+    spread:       4.5,
+    yFlatten:     0.82,   // nearly spherical
+    radiusBias:   2.8,    // very dense toward center
+    opacityRange: [0.28, 0.72],
+    driftSpeed:   0,
+    driftTilt:    0,
+    parallaxX:    0.12,   // bulge barely moves (gravitational center)
+    parallaxY:    0.08,
+    maxOpacity:   0.88,
+    twinkle:      0.05,   // old stars barely scintillate
+    additive:     false,
+  },
 ]
 
 // ── RNG ────────────────────────────────────────────────────────────────────
@@ -208,17 +235,14 @@ function buildGeometry(def: StarLayerDef, count: number, seed: number): THREE.Bu
   const tmpColor = new THREE.Color()
 
   for (let i = 0; i < count; i++) {
-    // ── Position ──────────────────────────────────────────────────────
     if (def.spiral) {
       const { arms, tightness, spreadFrac } = def.spiral
       const arm      = Math.floor(rng() * arms)
-      const t        = rng()                          // 0–1 along arm
-      const theta    = t * Math.PI * 3.5              // 1.75 full turns
+      const t        = rng()
+      const theta    = t * Math.PI * 3.5
       const r        = def.spread * (0.04 + 0.96 * Math.pow(t, 0.65))
       const armAngle = arm * (Math.PI * 2 / arms)
       const angle    = theta * tightness + armAngle
-
-      // Perpendicular scatter grows with distance from center
       const scatter  = def.spread * spreadFrac * (0.3 + 0.7 * t) * (rng() * 2 - 1)
       const perp     = angle + Math.PI * 0.5
 
@@ -234,7 +258,6 @@ function buildGeometry(def: StarLayerDef, count: number, seed: number): THREE.Bu
       positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(th)
     }
 
-    // ── Attributes ────────────────────────────────────────────────────
     sizes[i]     = def.sizeRange[0]    + rng() * (def.sizeRange[1]    - def.sizeRange[0])
     opacities[i] = def.opacityRange[0] + rng() * (def.opacityRange[1] - def.opacityRange[0])
     phases[i]    = rng() * Math.PI * 2
@@ -277,38 +300,40 @@ export function StarField() {
   const reducedMotion = usePrefersReducedMotion()
   const isMobile      = useMediaQuery('(max-width: 768px)')
 
-  // ~55 % reduction on mobile
   const count0 = isMobile ? 2200 : LAYERS[0].baseCount
   const count1 = isMobile ? 650  : LAYERS[1].baseCount
   const count2 = isMobile ? 45   : LAYERS[2].baseCount
   const count3 = isMobile ? 35   : LAYERS[3].baseCount
+  const count4 = isMobile ? 150  : LAYERS[4].baseCount
 
   const geo0 = useMemo(() => buildGeometry(LAYERS[0], count0, 42),   [count0])
   const geo1 = useMemo(() => buildGeometry(LAYERS[1], count1, 137),  [count1])
   const geo2 = useMemo(() => buildGeometry(LAYERS[2], count2, 512),  [count2])
   const geo3 = useMemo(() => buildGeometry(LAYERS[3], count3, 1024), [count3])
+  const geo4 = useMemo(() => buildGeometry(LAYERS[4], count4, 2048), [count4])
 
   const mat0 = useMemo(() => buildMaterial(LAYERS[0]), [])
   const mat1 = useMemo(() => buildMaterial(LAYERS[1]), [])
   const mat2 = useMemo(() => buildMaterial(LAYERS[2]), [])
   const mat3 = useMemo(() => buildMaterial(LAYERS[3]), [])
+  const mat4 = useMemo(() => buildMaterial(LAYERS[4]), [])
 
   const grp0 = useRef<THREE.Group>(null)
   const grp1 = useRef<THREE.Group>(null)
   const grp2 = useRef<THREE.Group>(null)
   const grp3 = useRef<THREE.Group>(null)
+  const grp4 = useRef<THREE.Group>(null)
 
-  // ── Cleanup ────────────────────────────────────────────────────────────
   useEffect(() => { return () => geo0.dispose() }, [geo0])
   useEffect(() => { return () => geo1.dispose() }, [geo1])
   useEffect(() => { return () => geo2.dispose() }, [geo2])
   useEffect(() => { return () => geo3.dispose() }, [geo3])
+  useEffect(() => { return () => geo4.dispose() }, [geo4])
 
   useEffect(() => {
-    return () => { mat0.dispose(); mat1.dispose(); mat2.dispose(); mat3.dispose() }
-  }, [mat0, mat1, mat2, mat3])
+    return () => { mat0.dispose(); mat1.dispose(); mat2.dispose(); mat3.dispose(); mat4.dispose() }
+  }, [mat0, mat1, mat2, mat3, mat4])
 
-  // ── Frame loop ─────────────────────────────────────────────────────────
   useFrame((state, delta) => {
     const t   = state.clock.elapsedTime
     const ptx = state.pointer.x
@@ -318,45 +343,52 @@ export function StarField() {
       getComputedStyle(document.documentElement).getPropertyValue('--hero-progress') || '0',
     )
     const scrollFade = Math.max(0, 1 - scrollProgress / 0.8)
-    const lerp       = 0.02
 
-    // Layer 0 — distant spiral disc, slow Y drift
+    // Frame-rate independent lerp: equivalent to 0.02 per frame at 60 fps
+    const lerpFactor = 1 - Math.exp(-1.2 * delta)
+
     mat0.uniforms.uOpacityMult.value = LAYERS[0].maxOpacity * scrollFade
     if (!reducedMotion && grp0.current) {
       grp0.current.rotation.y += LAYERS[0].driftSpeed * delta
-      grp0.current.position.x += (ptx * LAYERS[0].parallaxX - grp0.current.position.x) * lerp
-      grp0.current.position.y += (pty * LAYERS[0].parallaxY - grp0.current.position.y) * lerp
+      grp0.current.position.x += (ptx * LAYERS[0].parallaxX - grp0.current.position.x) * lerpFactor
+      grp0.current.position.y += (pty * LAYERS[0].parallaxY - grp0.current.position.y) * lerpFactor
     }
 
-    // Layer 1 — mid spiral, tilted drift + twinkle
     mat1.uniforms.uOpacityMult.value = LAYERS[1].maxOpacity * scrollFade
     if (!reducedMotion) {
       mat1.uniforms.uTime.value = t
       if (grp1.current) {
         grp1.current.rotation.y += LAYERS[1].driftSpeed * delta
         grp1.current.rotation.x += LAYERS[1].driftTilt  * delta
-        grp1.current.position.x += (ptx * LAYERS[1].parallaxX - grp1.current.position.x) * lerp
-        grp1.current.position.y += (pty * LAYERS[1].parallaxY - grp1.current.position.y) * lerp
+        grp1.current.position.x += (ptx * LAYERS[1].parallaxX - grp1.current.position.x) * lerpFactor
+        grp1.current.position.y += (pty * LAYERS[1].parallaxY - grp1.current.position.y) * lerpFactor
       }
     }
 
-    // Layer 2 — warm giants, parallax + twinkle (no drift)
     mat2.uniforms.uOpacityMult.value = LAYERS[2].maxOpacity * scrollFade
     if (!reducedMotion) {
       mat2.uniforms.uTime.value = t
       if (grp2.current) {
-        grp2.current.position.x += (ptx * LAYERS[2].parallaxX - grp2.current.position.x) * lerp
-        grp2.current.position.y += (pty * LAYERS[2].parallaxY - grp2.current.position.y) * lerp
+        grp2.current.position.x += (ptx * LAYERS[2].parallaxX - grp2.current.position.x) * lerpFactor
+        grp2.current.position.y += (pty * LAYERS[2].parallaxY - grp2.current.position.y) * lerpFactor
       }
     }
 
-    // Layer 3 — cyan accents, parallax + twinkle (no drift)
     mat3.uniforms.uOpacityMult.value = LAYERS[3].maxOpacity * scrollFade
     if (!reducedMotion) {
       mat3.uniforms.uTime.value = t
       if (grp3.current) {
-        grp3.current.position.x += (ptx * LAYERS[3].parallaxX - grp3.current.position.x) * lerp
-        grp3.current.position.y += (pty * LAYERS[3].parallaxY - grp3.current.position.y) * lerp
+        grp3.current.position.x += (ptx * LAYERS[3].parallaxX - grp3.current.position.x) * lerpFactor
+        grp3.current.position.y += (pty * LAYERS[3].parallaxY - grp3.current.position.y) * lerpFactor
+      }
+    }
+
+    mat4.uniforms.uOpacityMult.value = LAYERS[4].maxOpacity * scrollFade
+    if (!reducedMotion) {
+      mat4.uniforms.uTime.value = t
+      if (grp4.current) {
+        grp4.current.position.x += (ptx * LAYERS[4].parallaxX - grp4.current.position.x) * lerpFactor
+        grp4.current.position.y += (pty * LAYERS[4].parallaxY - grp4.current.position.y) * lerpFactor
       }
     }
   })
@@ -374,6 +406,10 @@ export function StarField() {
       </group>
       <group ref={grp3}>
         <points geometry={geo3} material={mat3} frustumCulled={false} />
+      </group>
+      {/* Galactic bulge — rendered last so it composites over the disc */}
+      <group ref={grp4}>
+        <points geometry={geo4} material={mat4} frustumCulled={false} />
       </group>
     </group>
   )

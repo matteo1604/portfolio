@@ -35,7 +35,9 @@ const SHOOT_FRAG = /* glsl */ `
   varying float vNorm;
 
   void main() {
-    gl_FragColor = vec4(0.88, 0.96, 1.0, vNorm * uAlpha);
+    // Power curve: head blazes, tail decays quickly — matches real meteor behaviour
+    float fade = pow(vNorm, 0.45);
+    gl_FragColor = vec4(0.88, 0.96, 1.0, fade * uAlpha);
   }
 `
 
@@ -72,6 +74,7 @@ function ShootingStarsInner() {
             uProgress:   { value: -1 },
             uStreakFrac: { value: 0.15 },
             uAlpha:      { value: 0 },
+            uMaxAlpha:   { value: 0.82 },  // randomised per spawn
             uSpeed:      { value: 1.8 },
           },
         }),
@@ -105,12 +108,13 @@ function ShootingStarsInner() {
       mat.uniforms.uProgress.value = next
 
       // Alpha envelope: fade in 0→0.12, hold, fade out 0.80→1.0
+      const maxA = mat.uniforms.uMaxAlpha.value
       if (next < 0.12) {
-        mat.uniforms.uAlpha.value = (next / 0.12) * 0.82
+        mat.uniforms.uAlpha.value = (next / 0.12) * maxA
       } else if (next > 0.80) {
-        mat.uniforms.uAlpha.value = Math.max(0, (1.0 - next) / 0.20) * 0.82
+        mat.uniforms.uAlpha.value = Math.max(0, (1.0 - next) / 0.20) * maxA
       } else {
-        mat.uniforms.uAlpha.value = 0.82
+        mat.uniforms.uAlpha.value = maxA
       }
 
       if (next >= 1.0) {
@@ -123,10 +127,10 @@ function ShootingStarsInner() {
     if (t > nextSpawnRef.current) {
       const idle = mats.find((m) => m.uniforms.uProgress.value < 0)
       if (idle) {
-        // Start: random position in upper scene area, in front of nebula
+        // Start: random position in upper scene area, varied depth for parallax
         const sx = (rng() * 2 - 1) * 17
         const sy = 7 + rng() * 7
-        const sz = -6
+        const sz = -5 - rng() * 9   // z: −5 to −14
 
         // Direction: mostly downward, slight left lean
         const dx = -(0.28 + rng() * 0.18)
@@ -143,6 +147,7 @@ function ShootingStarsInner() {
         )
         idle.uniforms.uStreakFrac.value = 0.13 + rng() * 0.09
         idle.uniforms.uSpeed.value      = 1.6  + rng() * 1.0
+        idle.uniforms.uMaxAlpha.value   = 0.50 + rng() * 0.45  // brightness varies per meteor
         idle.uniforms.uProgress.value   = 0
         idle.uniforms.uAlpha.value      = 0
       }

@@ -18,15 +18,15 @@ const FRAG = /* glsl */ `
   uniform float uOpacity;
   varying vec2 vUv;
 
-  // Value noise
+  // Value noise — independent hash per corner avoids tiling artefacts
   float noise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
     vec2 u = f * f * (3.0 - 2.0 * f);
     float a = fract(sin(dot(i,               vec2(127.1, 311.7))) * 43758.545);
-    float b = fract(sin(dot(i + vec2(1, 0),  vec2(127.1, 311.7))) * 43758.545);
-    float c = fract(sin(dot(i + vec2(0, 1),  vec2(127.1, 311.7))) * 43758.545);
-    float d = fract(sin(dot(i + vec2(1, 1),  vec2(127.1, 311.7))) * 43758.545);
+    float b = fract(sin(dot(i + vec2(1, 0),  vec2(269.5, 183.3))) * 43758.545);
+    float c = fract(sin(dot(i + vec2(0, 1),  vec2(419.2,  71.9))) * 43758.545);
+    float d = fract(sin(dot(i + vec2(1, 1),  vec2( 17.3, 537.1))) * 43758.545);
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
   }
 
@@ -101,11 +101,13 @@ export function NebulaBackground() {
     if (!reducedMotion) material.uniforms.uTime.value = state.clock.elapsedTime
   })
 
+  // Slight tilt — galactic planes are never perfectly horizontal
   return (
     <mesh
       geometry={geometry}
       material={material}
       position={[0, 0, -28]}
+      rotation={[0.06, 0.03, 0]}
       renderOrder={-1}
     />
   )
