@@ -9,7 +9,12 @@
       "Bash(curl -s http://localhost:5173)",
       "Bash(echo \"Exit code: $?\")",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git merge:*)",
+      "Bash(node scripts/fix-font-winding.js)",
+      "Bash(node -e ':*)",
+      "Bash(echo \"exit:$?\")",
+      "Read(//tmp/**)"
     ]
   }
 }

@@ -83,7 +83,7 @@ function ChromeTextInner({ chromeRef }: Props) {
           bevelThickness={0.06}
           bevelSize={0.07}
           bevelSegments={10}
-          curveSegments={20}
+          curveSegments={64}
         >
           MATTEO
           <meshPhysicalMaterial ref={mat1Ref} {...chromeMaterialProps} />

@@ -1,7 +1,9 @@
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { ParticleNetwork, type ParticleNetworkRef } from './ParticleNetwork'
+import { NebulaBackground } from './NebulaBackground'
+import { StarField } from './StarField'
+import { ShootingStars } from './ShootingStars'
 import { ChromeText, type ChromeTextRef } from './ChromeText'
 
 type Phase = 'idle' | 'converging' | 'crystallizing' | 'chrome_in' | 'settled'
@@ -10,27 +12,19 @@ interface Props {
   isMobile: boolean
 }
 
-// Power3 ease-in-out
-function easeInOut3(t: number): number {
-  t = Math.max(0, Math.min(1, t))
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
-}
-
 export function HeroScene({ isMobile }: Props) {
   const { size, camera } = useThree()
 
-  const phaseRef        = useRef<Phase>('idle')
-  const triggerTimeRef  = useRef<number | null>(null)  // clock.elapsedTime at trigger
-  const convergenceRef  = useRef(0)
+  const phaseRef       = useRef<Phase>('idle')
+  const triggerTimeRef = useRef<number | null>(null)
 
-  const networkApiRef   = useRef<ParticleNetworkRef | null>(null)
-  const chromeApiRef    = useRef<ChromeTextRef | null>(null)
+  const chromeApiRef   = useRef<ChromeTextRef | null>(null)
 
-  // Invisible plane for mouse raycasting
-  const planeMeshRef    = useRef<THREE.Mesh>(null)
-  const raycaster       = useRef(new THREE.Raycaster())
-  const mouseNDC        = useRef(new THREE.Vector2(0, 0))
-  const mouseWorld      = useRef(new THREE.Vector3())
+  // Invisible plane at z=0 for mouse raycasting (used by ChromeText tilt)
+  const planeMeshRef = useRef<THREE.Mesh>(null)
+  const raycaster    = useRef(new THREE.Raycaster())
+  const mouseNDC     = useRef(new THREE.Vector2(0, 0))
+  const mouseWorld   = useRef(new THREE.Vector3())
 
   // ── Trigger: first pointermove (desktop) or 1.5s fallback (mobile) ──────
   useEffect(() => {
@@ -64,25 +58,22 @@ export function HeroScene({ isMobile }: Props) {
   useFrame((state) => {
     const t = state.clock.elapsedTime
 
-    // ── Raycast mouse to z=0 plane ────────────────────────────────────────
+    // ── Raycast mouse to z=0 plane for ChromeText tilt ───────────────────
     raycaster.current.setFromCamera(mouseNDC.current, camera)
     if (planeMeshRef.current) {
       const hits: THREE.Intersection[] = []
       raycaster.current.intersectObject(planeMeshRef.current, false, hits)
-      if (hits.length > 0) {
-        mouseWorld.current.copy(hits[0].point)
-      }
+      if (hits.length > 0) mouseWorld.current.copy(hits[0].point)
     }
 
     const mx = mouseWorld.current.x
     const my = mouseWorld.current.y
 
-    // ── Read scroll progress from CSS var ────────────────────────────────
     const scrollProgress = parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--hero-progress') || '0'
     )
 
-    // ── Phase machine ────────────────────────────────────────────────────
+    // ── Phase machine — drives ChromeText reveal timing ──────────────────
     const phase = phaseRef.current
 
     if (phase !== 'idle') {
@@ -91,24 +82,13 @@ export function HeroScene({ isMobile }: Props) {
       const elapsed = t - triggerTimeRef.current
 
       if (phase === 'converging') {
-        // 0 → 3.5s: convergenza lenta, Power3 ease-in-out
-        const raw = Math.min(elapsed / 3.5, 1)
-        convergenceRef.current = easeInOut3(raw)
-        networkApiRef.current?.setOvershoot(0)
-        if (elapsed >= 3.5) {
-          convergenceRef.current = 1
-          phaseRef.current = 'crystallizing'
-        }
+        // 0 → 3.5s: waiting period before chrome text appears
+        if (elapsed >= 3.5) phaseRef.current = 'crystallizing'
       }
 
       if (phase === 'crystallizing') {
-        // 3.5 → 4.0s: overshoot radiale sin(t·π), poi snap
-        convergenceRef.current = 1
-        const crystalT = Math.min((elapsed - 3.5) / 0.5, 1)
-        const overshoot = Math.sin(crystalT * Math.PI)
-        networkApiRef.current?.setOvershoot(overshoot)
+        // 3.5 → 4.0s: brief transition, then reveal chrome text
         if (elapsed >= 4.0) {
-          networkApiRef.current?.setOvershoot(0)
           chromeApiRef.current?.setVisible(true)
           chromeApiRef.current?.setOpacity(0)
           chromeApiRef.current?.setScale(0.96)
@@ -117,12 +97,9 @@ export function HeroScene({ isMobile }: Props) {
       }
 
       if (phase === 'chrome_in') {
-        // 4.0 → 5.5s: scale 0.96→1 + opacity 0→1, expo-out quartica
-        convergenceRef.current = 1
-        networkApiRef.current?.setOvershoot(0)
+        // 4.0 → 5.5s: scale 0.96→1 + opacity 0→1, expo-out quartic
         const chromeT = Math.min((elapsed - 4.0) / 1.5, 1)
-        // Expo-out quartica: 1 - (1-t)^4  →  80% opacità nei primi ~0.4s
-        const eased = 1 - Math.pow(1 - chromeT, 4)
+        const eased   = 1 - Math.pow(1 - chromeT, 4)
         chromeApiRef.current?.setOpacity(eased)
         chromeApiRef.current?.setScale(0.96 + 0.04 * eased)
         if (elapsed >= 5.5) {
@@ -134,30 +111,24 @@ export function HeroScene({ isMobile }: Props) {
       }
 
       if (phase === 'settled') {
-        convergenceRef.current = 1
-        networkApiRef.current?.setOvershoot(0)
         chromeApiRef.current?.setOpacity(1)
         chromeApiRef.current?.setScale(1)
       }
     }
 
-    // ── Pass data to children ─────────────────────────────────────────────
-    networkApiRef.current?.setConvergence(convergenceRef.current)
-    networkApiRef.current?.setMouseWorld(mx, my)
-    networkApiRef.current?.setScrollProgress(scrollProgress)
-
+    // ── Pass mouse + scroll to ChromeText ────────────────────────────────
     chromeApiRef.current?.setMouseInfluence(mx / (size.width * 0.5), my / (size.height * 0.5))
     chromeApiRef.current?.setScrollProgress(scrollProgress)
   })
 
   return (
     <>
-      {/* Lighting — required for MeshPhysicalMaterial chrome effect */}
+      {/* Lighting — required for MeshPhysicalMaterial chrome reflections */}
       <ambientLight intensity={0.1} />
       <directionalLight position={[5, 5, 5]} intensity={1.8} />
       {/* Cyan point light behind camera — signature cyan rim on chrome */}
       <pointLight position={[0, 0, 10]} intensity={2.0} color="#00D4FF" />
-      {/* Warm fill from top-left — illuminates MATTEO side, adds depth */}
+      {/* Warm fill from top-left — adds depth to MATTEO side */}
       <pointLight position={[-8, 4, 6]} intensity={0.6} />
 
       {/* Invisible plane at z=0 for raycasting */}
@@ -166,7 +137,9 @@ export function HeroScene({ isMobile }: Props) {
         <meshBasicMaterial />
       </mesh>
 
-      <ParticleNetwork networkRef={networkApiRef} isMobile={isMobile} />
+      <NebulaBackground />
+      <StarField />
+      <ShootingStars />
       <ChromeText chromeRef={chromeApiRef} />
     </>
   )
