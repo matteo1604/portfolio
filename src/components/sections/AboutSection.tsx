@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { useGSAP } from '@/hooks/useGSAP'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 import { ABOUT_SLIDES, tokenizePhrase } from '@/data/about-slides'
+import DataCoreScene from '../canvas/DataCoreScene'
 gsap.registerPlugin(ScrollTrigger)
 
 const SECTION_HEIGHT = '300vh'
@@ -48,97 +49,14 @@ const IDE_LINES = [
   { text: <><span style={SYNTAX.bracket}>{'}'}</span></>, type: 'code' },
 ]
 
-// ── Particle Canvas ──
-interface Particle {
-  x: number; y: number; vx: number; vy: number; radius: number; opacity: number;
-}
-function createParticles(w: number, h: number, count: number): Particle[] {
-  const particles: Particle[] = []
-  for (let i = 0; i < count; i++) {
-    particles.push({
-      x: Math.random() * w, y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
-      radius: 1 + Math.random() * 1.5, opacity: 0.08 + Math.random() * 0.12,
-    })
-  }
-  return particles
-}
-function useParticleCanvas(canvasRef: React.RefObject<HTMLCanvasElement | null>, reducedMotion: boolean) {
-  useEffect(() => {
-    if (reducedMotion || !canvasRef.current) return
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    let raf: number, w = 0, h = 0, particles: Particle[] = []
-    
-    const mouse = { x: -1000, y: -1000 }
-    const onMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect()
-      mouse.x = e.clientX - rect.left; mouse.y = e.clientY - rect.top
-    }
-    const onMouseLeave = () => { mouse.x = -1000; mouse.y = -1000 }
-    window.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseleave', onMouseLeave)
-
-    const resize = () => {
-      const rect = canvas.parentElement?.getBoundingClientRect()
-      if (!rect) return
-      w = rect.width; h = rect.height
-      canvas.width = w * devicePixelRatio; canvas.height = h * devicePixelRatio
-      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
-      particles = createParticles(w, h, 40)
-    }
-    resize()
-    window.addEventListener('resize', resize)
-
-    const tick = () => {
-      ctx.clearRect(0, 0, w, h)
-      for (const p of particles) {
-        p.x += p.vx; p.y += p.vy
-        
-        const dx = p.x - mouse.x, dy = p.y - mouse.y, distSq = dx * dx + dy * dy
-        if (distSq < 20000) {
-           const force = (20000 - distSq) / 20000
-           p.x += dx * force * 0.08; p.y += dy * force * 0.08
-        }
-
-        if (p.x < 0) p.x = w; if (p.x > w) p.x = 0
-        if (p.y < 0) p.y = h; if (p.y > h) p.y = 0
-
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(0, 212, 255, ${p.opacity})`
-        ctx.fill()
-      }
-      
-      ctx.lineWidth = 0.3
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x, dy = particles[i].y - particles[j].y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 120) {
-            ctx.strokeStyle = `rgba(0, 212, 255, ${(1 - dist / 120) * 0.04})`
-            ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y); ctx.lineTo(particles[j].x, particles[j].y); ctx.stroke()
-          }
-        }
-      }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-
-    return () => {
-      cancelAnimationFrame(raf); window.removeEventListener('resize', resize); window.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseleave', onMouseLeave)
-    }
-  }, [canvasRef, reducedMotion])
-}
+// ── Data Core Scene ──
 
 // ── Component ──
 export function AboutSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const pinRef = useRef<HTMLDivElement>(null)
   const bgWrapperRef = useRef<HTMLDivElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const scrollProgressRef = useRef(0)
   const cursorRef = useRef<HTMLDivElement>(null)
   const spotlightRef = useRef<HTMLDivElement>(null)
   const stageRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -148,8 +66,6 @@ export function AboutSection() {
   const setIdeRef = useCallback((i: number) => (el: HTMLDivElement | null) => { ideLineRefs.current[i] = el }, [])
   
   const prefersReducedMotion = usePrefersReducedMotion()
-  
-  useParticleCanvas(canvasRef, prefersReducedMotion)
 
   // Spotlight mouse effect
   useEffect(() => {
@@ -201,6 +117,50 @@ export function AboutSection() {
       height: (firstSlide.endLine - firstSlide.startLine + 1) * LINE_HEIGHT 
     })
 
+    // Setup Magnetic Text Effect
+    if (!prefersReducedMotion) {
+      const wrappers = gsap.utils.toArray<HTMLElement>('.word-wrapper')
+      wrappers.forEach(wrapper => {
+        const word = wrapper.querySelector('.stage-word')
+        if (!word) return
+        
+        const onMouseMove = (e: MouseEvent) => {
+          const rect = wrapper.getBoundingClientRect()
+          const centerX = rect.left + rect.width / 2
+          const centerY = rect.top + rect.height / 2
+          const distanceX = e.clientX - centerX
+          const distanceY = e.clientY - centerY
+          
+          gsap.to(word, {
+            x: distanceX * 0.3,
+            y: distanceY * 0.3,
+            scale: 1.05,
+            rotation: distanceX * 0.05,
+            color: '#00e5ff',
+            duration: 0.6,
+            ease: 'expo.out',
+            overwrite: 'auto' // ensure previous leaving animation doesn't conflict
+          })
+        }
+        
+        const onMouseLeave = () => {
+          gsap.to(word, { 
+            x: 0, 
+            y: 0, 
+            scale: 1, 
+            rotation: 0, 
+            color: '', // reverts to inline style color
+            duration: 1.2, 
+            ease: 'elastic.out(1.2, 0.4)',
+            overwrite: 'auto'
+          })
+        }
+        
+        wrapper.addEventListener('mousemove', onMouseMove)
+        wrapper.addEventListener('mouseleave', onMouseLeave)
+      })
+    }
+
     // Intro Animations when scrolling into the section
     const stage0 = stageRefs.current[0]
     if (stage0) {
@@ -234,6 +194,20 @@ export function AboutSection() {
         scrub: 1,
         pin: pinRef.current,
         pinSpacing: false,
+        onUpdate: (self) => {
+          scrollProgressRef.current = self.progress
+          if (!prefersReducedMotion) {
+            // Apply a slight physical skew to all text stages based on scroll velocity
+            const velocity = self.getVelocity()
+            gsap.to(stageRefs.current, {
+              skewY: velocity / -1000, // adjust divisor for intensity
+              y: velocity / 500,
+              ease: 'power3.out',
+              duration: 0.5,
+              overwrite: 'auto'
+            })
+          }
+        }
       }
     })
 
@@ -325,7 +299,7 @@ export function AboutSection() {
 
         {/* 2. Particle Background */}
         {!prefersReducedMotion && (
-          <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+          <DataCoreScene progressRef={scrollProgressRef} />
         )}
 
         {/* 3. Mouse Spotlight */}
@@ -398,7 +372,7 @@ export function AboutSection() {
                 <div className="relative z-10 flex flex-col gap-6">
                   <h2 className="font-display text-[clamp(40px,5vw,64px)] leading-[1.05] tracking-tight m-0 mix-blend-normal">
                     {tokens.map((token) => (
-                      <span key={token.index} style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'bottom', paddingRight: '0.2em', paddingBottom: '0.1em' }}>
+                      <span key={token.index} className="word-wrapper" style={{ display: 'inline-block', overflow: 'visible', verticalAlign: 'bottom', paddingRight: '0.2em', paddingBottom: '0.1em' }}>
                         <span className="stage-word" style={{ 
                           display: 'inline-block',
                           color: token.accent ? 'var(--accent)' : 'inherit', 

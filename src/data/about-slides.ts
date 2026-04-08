@@ -20,7 +20,7 @@ export interface AboutSlide {
 
 export const ABOUT_SLIDES: AboutSlide[] = [
   {
-    startLine: 8,
+    startLine: 1,
     endLine: 11,
     phrase: [
       { text: 'Engineering ', accent: false },
