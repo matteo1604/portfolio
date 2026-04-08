@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import { ParticleSphere } from './ParticleSphere'
 import { ChromeText, type ChromeTextRef } from './ChromeText'
 
@@ -17,6 +18,8 @@ export function HeroScene({ isMobile }: Props) {
   const triggerTimeRef = useRef<number | null>(null)
   
   const chromeApiRef   = useRef<ChromeTextRef>(null)
+  
+  const bloomRef = useRef<any>(null)
 
   // Invisible plane at z=0 for mouse raycasting (used by ChromeText tilt)
   const planeMeshRef = useRef<THREE.Mesh>(null)
@@ -73,25 +76,48 @@ export function HeroScene({ isMobile }: Props) {
       const elapsed = t - triggerTimeRef.current
 
       if (phase === 'converging') {
-        if (elapsed >= 3.0) {
+        // Start moderately zoomed in, not completely inside
+        camera.position.z = 6
+        if ((camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
+          ;(camera as THREE.PerspectiveCamera).fov = 85
+          camera.updateProjectionMatrix()
+        }
+        
+        if (elapsed >= 1.2) {
           phaseRef.current = 'chrome_in'
           if (chromeApiRef.current) chromeApiRef.current.setVisible(true)
         }
       } else if (phase === 'chrome_in') {
-        const tChrome = elapsed - 3.0
-        const duration = 2.0
+        const tChrome = Math.max(0, elapsed - 1.2)
+        const duration = 1.0
         const clampedT = Math.min(tChrome / duration, 1.0)
         
-        const easeOutCubic = 1 - Math.pow(1 - clampedT, 3)
+        // 1. Elegant smooth pull back
+        const pullBackEase = 1 - Math.pow(1 - clampedT, 4)
+        camera.position.z = 6 + pullBackEase * 8 // 6 -> 14
+        if ((camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
+          ;(camera as THREE.PerspectiveCamera).fov = 85 - pullBackEase * 30 // 85 -> 55
+          camera.updateProjectionMatrix()
+        }
+        
+        // 2. Refined Bloom Flash (No colored aberration)
+        const flashIntensity = clampedT < 0.15 
+          ? (clampedT / 0.15) 
+          : 1 - ((clampedT - 0.15) / 0.85)
+
+        if (bloomRef.current) {
+           bloomRef.current.intensity = flashIntensity * 3.5 // Elegant bright cyan flash
+        }
         
         if (chromeApiRef.current) {
-          chromeApiRef.current.setOpacity(easeOutCubic)
-          chromeApiRef.current.setScale(1.1 - 0.1 * easeOutCubic)
+          chromeApiRef.current.setEntranceProgress(clampedT)
         }
         
         if (tChrome >= duration) {
           phaseRef.current = 'settled'
           document.documentElement.style.setProperty('--hero-animation-complete', '1')
+          
+          if (bloomRef.current) bloomRef.current.intensity = 0
         }
       } else if (phase === 'settled') {
         const scrollProgress = parseFloat(
@@ -106,6 +132,13 @@ export function HeroScene({ isMobile }: Props) {
           chromeApiRef.current.setOpacity(Math.max(0, 1 - scrollProgress * 1.5))
         }
       }
+    } else {
+      // Idle state - keep zoomed in
+      camera.position.z = 6
+      if ((camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
+        ;(camera as THREE.PerspectiveCamera).fov = 85
+        camera.updateProjectionMatrix()
+      }
     }
   })
 
@@ -119,6 +152,15 @@ export function HeroScene({ isMobile }: Props) {
       <ParticleSphere isMobile={isMobile} />
       
       <ChromeText ref={chromeApiRef} />
+      
+      <EffectComposer multisampling={4} autoClear={false}>
+        <Bloom 
+          ref={bloomRef}
+          intensity={0}
+          luminanceThreshold={0.5}
+          luminanceSmoothing={0.9}
+        />
+      </EffectComposer>
     </>
   )
 }

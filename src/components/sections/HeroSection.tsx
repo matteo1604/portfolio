@@ -343,24 +343,16 @@ export function HeroSection() {
         {/* ── Main content: subtitle + tagline, bottom-left ───────────── */}
         <div
           ref={contentRef}
-          className="scanlines"
           style={{
             position: 'absolute',
-            bottom: 'clamp(4rem, 8vh, 6rem)',
-            left: 'clamp(1.5rem, 3vw, 2.5rem)',
-            paddingLeft: '1.5rem',
-            paddingRight: '3rem',
-            paddingTop: '1.25rem',
-            paddingBottom: '1.25rem',
+            bottom: 'clamp(1.5rem, 3vh, 2rem)',
+            left: 'clamp(3.5rem, 5vw, 4.5rem)',
+            // No background or borders, just clean floating text like a terminal
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.8rem',
-            // Tech/Hacker terminal panel look
-            background: 'rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            borderLeft: '2px solid var(--accent)',
-            boxShadow: 'inset 20px 0 40px -20px rgba(0, 255, 136, 0.1)',
+            gap: '0.75rem',
+            maxWidth: '420px',
+            pointerEvents: 'none',
           }}
         >
           {/* Terminal line */}
@@ -416,8 +408,8 @@ export function HeroSection() {
         <div
           style={{
             position: 'absolute',
-            bottom: 'clamp(4rem, 8vh, 6rem)',
-            right: '8vw',
+            bottom: 'clamp(1.5rem, 3vh, 2rem)',
+            right: 'clamp(1.5rem, 3vw, 2.5rem)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-end',

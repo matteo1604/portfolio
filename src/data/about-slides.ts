@@ -12,48 +12,50 @@ export interface PhraseSegment {
 }
 
 export interface AboutSlide {
-  prompt: string
+  startLine: number
+  endLine: number
   phrase: PhraseSegment[]
   sub: string
 }
 
 export const ABOUT_SLIDES: AboutSlide[] = [
   {
-    prompt: 'cat about.txt',
+    startLine: 8,
+    endLine: 11,
     phrase: [
-      { text: "I don't build websites. I build ", accent: false },
-      { text: 'experiences.', accent: true },
+      { text: 'Engineering ', accent: false },
+      { text: 'logic. ', accent: true },
+      { text: 'Creative ', accent: false },
+      { text: 'execution.', accent: true },
     ],
-    sub: 'CS Engineering student with an obsession for the space where logic meets aesthetics.',
+    sub: "I'm Matteo. A Computer Engineering student crafting high-performance, interactive ecosystems. The browser is no longer a document viewer; it's a spatial rendering engine.",
   },
   {
-    prompt: 'cat approach.txt',
+    startLine: 13,
+    endLine: 15,
     phrase: [
-      { text: 'Every pixel has ', accent: false },
-      { text: 'a reason.', accent: true },
-      { text: ' Every animation ', accent: false },
-      { text: 'communicates.', accent: true },
+      { text: 'Algorithms as ', accent: false },
+      { text: 'pure art.', accent: true },
     ],
-    sub: 'I think in components, animate with purpose, and obsess over the details that most people never notice — but always feel.',
+    sub: 'Coming from a rigorous CS background, I approach frontend procedurally. Every shader, particle system, and kinetic scroll mechanic is built on mathematical precision.',
   },
   {
-    prompt: 'cat tools.txt',
+    startLine: 17,
+    endLine: 19,
     phrase: [
-      { text: 'React is my ', accent: false },
-      { text: 'framework.', accent: true },
-      { text: ' The browser is my ', accent: false },
-      { text: 'canvas.', accent: true },
+      { text: 'WebGL meets ', accent: false },
+      { text: 'the DOM.', accent: true },
     ],
-    sub: 'TypeScript for safety. GSAP for scroll choreography. Three.js for the third dimension. Every tool chosen with intent — never by default.',
+    sub: 'React for architectural stability. Three.js for dimensional depth. GSAP for surgical animation timing. No bloat, no generic templates. Pure kinetic impact.',
   },
   {
-    prompt: 'cat mission.txt',
+    startLine: 21,
+    endLine: 24,
     phrase: [
-      { text: 'Technology should be ', accent: false },
-      { text: 'felt,', accent: true },
-      { text: " not explained.", accent: false },
+      { text: 'Stop telling. ', accent: false },
+      { text: 'Start showing.', accent: true },
     ],
-    sub: "That's why this portfolio doesn't describe what I can do. It shows you.",
+    sub: 'Words are cheap. Real digital craftsmanship is felt in the mouse drag, the scroll velocity, and the micro-interactions. You are experiencing my resumé right now.',
   },
 ]
 

@@ -9,10 +9,13 @@ export interface ChromeTextRef {
   setScale: (v: number) => void
   setMouseInfluence: (x: number, y: number) => void
   setScrollProgress: (v: number) => void
+  setEntranceProgress: (t: number) => void
 }
 
 export const ChromeText = forwardRef<ChromeTextRef, {}>((_, ref) => {
   const groupRef = useRef<THREE.Group>(null)
+  const group1Ref = useRef<THREE.Group>(null)
+  const group2Ref = useRef<THREE.Group>(null)
   
   const mat1Ref = useRef<THREE.MeshPhysicalMaterial>(null)
   const mat2Ref = useRef<THREE.MeshPhysicalMaterial>(null)
@@ -44,6 +47,31 @@ export const ChromeText = forwardRef<ChromeTextRef, {}>((_, ref) => {
     setScrollProgress: (v) => {
       if (groupRef.current) {
         groupRef.current.position.y = v * 5.0
+      }
+    },
+    setEntranceProgress: (t) => {
+      // Snappy exponential ease-out
+      const ease = t === 1 ? 1 : 1 - Math.pow(2, -10 * t)
+      
+      if (mat1Ref.current) mat1Ref.current.opacity = Math.min(1, t * 1.5)
+      if (mat2Ref.current) mat2Ref.current.opacity = Math.min(1, t * 1.5)
+      
+      if (groupRef.current) {
+        // Slam down scale
+        const scale = 1 + (1 - ease) * 1.5
+        groupRef.current.scale.setScalar(scale * baseScale)
+      }
+      
+      if (group1Ref.current && group2Ref.current) {
+        // MATTEO flies in from left, RAINERI from right, both coming from back Z
+        const invEase = 1 - ease
+        group1Ref.current.position.x = -invEase * 6
+        group1Ref.current.position.z = invEase * 10
+        group1Ref.current.rotation.y = invEase * 0.8
+        
+        group2Ref.current.position.x = invEase * 6
+        group2Ref.current.position.z = invEase * 10
+        group2Ref.current.rotation.y = -invEase * 0.8
       }
     }
   }))
@@ -80,7 +108,7 @@ export const ChromeText = forwardRef<ChromeTextRef, {}>((_, ref) => {
       <pointLight position={[6, -2, 6]} intensity={2.0} color="#B0D0FF" distance={20} decay={2} />
       <pointLight position={[0, 0, 8]} intensity={1.5} color="#E0F0FF" distance={15} decay={2} />
 
-      <group position={[0, 1.4, 0]}>
+      <group ref={group1Ref} position={[0, 1.4, 0]}>
         <Center>
           <Text {...textProps} outlineWidth={0.03} outlineColor="#8899AA">
             MATTEO
@@ -89,7 +117,7 @@ export const ChromeText = forwardRef<ChromeTextRef, {}>((_, ref) => {
         </Center>
       </group>
 
-      <group position={[0, -1.4, 0]}>
+      <group ref={group2Ref} position={[0, -1.4, 0]}>
         <Center>
           <Text {...textProps} outlineWidth={0.03} outlineColor="#8899AA">
             RAINERI
