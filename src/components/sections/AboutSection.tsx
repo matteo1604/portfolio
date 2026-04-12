@@ -5,10 +5,8 @@ import { motion } from 'framer-motion'
 import { useGSAP } from '@/hooks/useGSAP'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 import { ABOUT_SLIDES, tokenizePhrase } from '@/data/about-slides'
-import DataCoreScene from '../canvas/DataCoreScene'
 gsap.registerPlugin(ScrollTrigger)
 
-const SECTION_HEIGHT = '300vh'
 const LINE_HEIGHT = 28 // height per IDE line in pixels
 
 const SYNTAX = {
@@ -186,16 +184,74 @@ export function AboutSection() {
       })
     }
 
+    const switchToGrid = () => {
+      document.documentElement.style.setProperty('--p-flash', '1')
+      setTimeout(() => document.documentElement.style.setProperty('--p-flash', '0'), 150)
+      
+      const currentMorph = parseFloat(document.documentElement.style.getPropertyValue('--p-morph') || '0')
+      const currentScale = parseFloat(document.documentElement.style.getPropertyValue('--p-scale') || '0.7')
+      const currentZ = parseFloat(document.documentElement.style.getPropertyValue('--p-z') || '0')
+      const currentOpacity = parseFloat(document.documentElement.style.getPropertyValue('--p-opacity') || '1')
+      
+      const proxy = { morph: currentMorph, scale: currentScale, z: currentZ, opacity: currentOpacity }
+      gsap.to(proxy, {
+          morph: 2.0, // Force Grid Phase
+          scale: 2.5, // Gigantic layout to wrap IDE
+          z: -10, // Back off to behave as background
+          opacity: 0.15, // Extremely faint subtle dust
+          duration: 2.0, 
+          ease: 'expo.out',
+          overwrite: 'auto',
+          onUpdate: () => {
+              document.documentElement.style.setProperty('--p-morph', String(proxy.morph))
+              document.documentElement.style.setProperty('--p-scale', String(proxy.scale))
+              document.documentElement.style.setProperty('--p-z', String(proxy.z))
+              document.documentElement.style.setProperty('--p-opacity', String(proxy.opacity))
+          }
+      })
+    }
+    
+    const revertToHero = () => {
+      const currentMorph = parseFloat(document.documentElement.style.getPropertyValue('--p-morph') || '2.0')
+      const currentScale = parseFloat(document.documentElement.style.getPropertyValue('--p-scale') || '2.5')
+      
+      const proxy = { morph: currentMorph, scale: currentScale, z: -10, opacity: 0.15 }
+      gsap.to(proxy, {
+          morph: 0, // Force Sphere
+          scale: 0.7, // End of Hero scaling
+          z: 0,
+          opacity: 1.0,
+          duration: 1.5, 
+          ease: 'power3.inOut',
+          overwrite: 'auto',
+          onUpdate: () => {
+              document.documentElement.style.setProperty('--p-morph', String(proxy.morph))
+              document.documentElement.style.setProperty('--p-scale', String(proxy.scale))
+              document.documentElement.style.setProperty('--p-z', String(proxy.z))
+              document.documentElement.style.setProperty('--p-opacity', String(proxy.opacity))
+          }
+      })
+    }
+
     const tl = gsap.timeline({
       scrollTrigger: {
         trigger: sectionRef.current,
         start: 'top top',
-        end: 'bottom bottom',
+        end: '+=200%',
         scrub: 1,
         pin: pinRef.current,
         pinSpacing: false,
+        onEnter: switchToGrid,
+        onEnterBack: switchToGrid,
+        onLeaveBack: revertToHero,
         onUpdate: (self) => {
           scrollProgressRef.current = self.progress
+          
+          // --- GLOBAL PARTICLE TRACKING ---
+          // Pan the grid mechanically based on scroll reading
+          document.documentElement.style.setProperty('--p-x', String(-self.progress * 12))
+          document.documentElement.style.setProperty('--p-y', String(-5 + self.progress * 10))
+          
           if (!prefersReducedMotion) {
             // Apply a slight physical skew to all text stages based on scroll velocity
             const velocity = self.getVelocity()
@@ -267,7 +323,7 @@ export function AboutSection() {
   }, { scope: sectionRef, dependencies: [prefersReducedMotion] })
 
   return (
-    <section ref={sectionRef} id="about" style={{ height: SECTION_HEIGHT, position: 'relative' }}>
+    <section ref={sectionRef} id="about" className="relative w-full" style={{ height: '300vh' }}>
       
       {/* GLOBAL FIXED BACKGROUND FOR ABOUT SECTION */}
       {/* We use a fixed wrapper and fade it in via GSAP to prevent any sliding hard edges! */}
@@ -297,9 +353,9 @@ export function AboutSection() {
           </div>
         )}
 
-        {/* 2. Particle Background */}
+        {/* 2. Particle Background placeholder (handled globally now) */}
         {!prefersReducedMotion && (
-          <DataCoreScene progressRef={scrollProgressRef} />
+          <div className="absolute inset-0 z-[-1]" />
         )}
 
         {/* 3. Mouse Spotlight */}

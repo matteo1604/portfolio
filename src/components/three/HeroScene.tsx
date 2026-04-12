@@ -1,7 +1,9 @@
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { EffectComposer, Bloom } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, Noise } from '@react-three/postprocessing'
+import { BlendFunction } from 'postprocessing'
+import { Stars } from '@react-three/drei'
 import { ParticleSphere } from './ParticleSphere'
 import { ChromeText, type ChromeTextRef } from './ChromeText'
 
@@ -20,6 +22,8 @@ export function HeroScene({ isMobile }: Props) {
   const chromeApiRef   = useRef<ChromeTextRef>(null)
   
   const bloomRef = useRef<any>(null)
+  const chromRef = useRef<any>(null)
+  const prevScrollProg = useRef(0)
 
   // Invisible plane at z=0 for mouse raycasting (used by ChromeText tilt)
   const planeMeshRef = useRef<THREE.Mesh>(null)
@@ -56,7 +60,7 @@ export function HeroScene({ isMobile }: Props) {
     return () => window.removeEventListener('pointermove', onMove)
   }, [])
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const t = state.clock.elapsedTime
 
     // ── Raycast mouse to z=0 plane for ChromeText tilt ───────────────────
@@ -121,8 +125,14 @@ export function HeroScene({ isMobile }: Props) {
         }
       } else if (phase === 'settled') {
         const scrollProgress = parseFloat(
-          getComputedStyle(document.documentElement).getPropertyValue('--hero-progress') || '0'
+          document.documentElement.style.getPropertyValue('--hero-progress') || '0'
         )
+        
+        // Cinematic Parallax & Z-Travel
+        const targetZ = 14 - (scrollProgress * 12) // pushes camera deep into the sphere
+        camera.position.z += (targetZ - camera.position.z) * 0.1
+        const targetRotY = scrollProgress * Math.PI * 0.15
+        camera.rotation.y += (targetRotY - camera.rotation.y) * 0.1
         
         if (chromeApiRef.current && !isMobile) {
           chromeApiRef.current.setMouseInfluence(mouseNDC.current.x, mouseNDC.current.y)
@@ -149,6 +159,8 @@ export function HeroScene({ isMobile }: Props) {
       <pointLight position={[0, 0, 10]} intensity={2.0} color="#00D4FF" />
       <pointLight position={[-8, 4, 6]} intensity={0.6} />
 
+      <Stars radius={80} depth={60} count={2000} factor={3} saturation={0} fade speed={0.8} />
+
       <ParticleSphere isMobile={isMobile} />
       
       <ChromeText ref={chromeApiRef} />
@@ -159,6 +171,11 @@ export function HeroScene({ isMobile }: Props) {
           intensity={0}
           luminanceThreshold={0.5}
           luminanceSmoothing={0.9}
+        />
+        <Noise 
+          premultiply 
+          blendFunction={BlendFunction.SCREEN} 
+          opacity={0.12} // slightly more subtle grain
         />
       </EffectComposer>
     </>

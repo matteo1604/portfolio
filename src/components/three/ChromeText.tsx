@@ -23,7 +23,7 @@ export const ChromeText = forwardRef<ChromeTextRef, {}>((_, ref) => {
   const { size } = useThree()
   
   const isMobile = size.width < 768
-  const baseScale = isMobile ? 0.45 : 1.0
+  const baseScale = isMobile ? 0.65 : 1.3 // Ingrandito del 30% circa
 
   useImperativeHandle(ref, () => ({
     setVisible: (v) => {

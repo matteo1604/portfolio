@@ -7,7 +7,6 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { EASING, DURATION } from '@/lib/animations'
 import { scrollToSection } from '@/lib/lenis'
-import { HeroCanvas } from '@/components/three/HeroCanvas'
 import { useState } from 'react'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -164,14 +163,77 @@ export function HeroSection() {
         onUpdate: (self) => {
           document.documentElement.style.setProperty('--hero-progress', String(self.progress))
           document.documentElement.style.setProperty('--hero-progress-pct', `${self.progress * 100}%`)
+          
+          // --- GLOBAL PARTICLE TRACKING ---
+          // Hero owns the scroll from 0 to 1.
+          document.documentElement.style.setProperty('--p-y', String(self.progress * -15)) // Move down
+          document.documentElement.style.setProperty('--p-scale', String(1.0 - self.progress * 0.3)) // Scale down slightly
+          // Hero is strictly the initial Sphere (Morph state 0)
+          document.documentElement.style.setProperty('--p-morph', '0')
+          document.documentElement.style.setProperty('--p-opacity', '1')
+          
+          if (!prefersReducedMotion) {
+            const velocity = self.getVelocity()
+            gsap.to([contentRef.current, ctaWrapperRef.current], {
+              skewY: velocity / -1000,
+              ease: 'power3.out',
+              duration: 0.5,
+              overwrite: 'auto'
+            })
+          }
         },
         onLeaveBack: () => {
           document.documentElement.style.setProperty('--hero-progress', '0')
           document.documentElement.style.setProperty('--hero-progress-pct', '0%')
+          document.documentElement.style.setProperty('--p-y', '0')
+          document.documentElement.style.setProperty('--p-scale', '1')
         },
       })
 
       if (prefersReducedMotion) return
+      
+      // Setup Magnetic Text Effect
+      const wrappers = document.querySelectorAll('.hero-magnetic-wrapper')
+      wrappers.forEach(wrapper => {
+        const target = wrapper.querySelector('.hero-magnetic-target')
+        if (!target) return
+        
+        const onMouseMove = (e: Event) => {
+          const mouseEvent = e as MouseEvent
+          const rect = wrapper.getBoundingClientRect()
+          const centerX = rect.left + rect.width / 2
+          const centerY = rect.top + rect.height / 2
+          const distanceX = mouseEvent.clientX - centerX
+          const distanceY = mouseEvent.clientY - centerY
+          
+          gsap.to(target, {
+            x: distanceX * 0.3,
+            y: distanceY * 0.3,
+            scale: 1.05,
+            rotation: distanceX * 0.05,
+            color: '#00e5ff',
+            duration: 0.6,
+            ease: 'expo.out',
+            overwrite: 'auto'
+          })
+        }
+        
+        const onMouseLeave = () => {
+          gsap.to(target, { 
+            x: 0, 
+            y: 0, 
+            scale: 1, 
+            rotation: 0, 
+            color: '', // reverts to inline style color
+            duration: 1.2, 
+            ease: 'elastic.out(1.2, 0.4)',
+            overwrite: 'auto'
+          })
+        }
+        
+        wrapper.addEventListener('mousemove', onMouseMove)
+        wrapper.addEventListener('mouseleave', onMouseLeave)
+      })
 
       gsap.to(contentRef.current, {
         opacity: 0,
@@ -226,7 +288,7 @@ export function HeroSection() {
 
   return (
     <>
-      {prefersReducedMotion ? (
+      {prefersReducedMotion && (
         // ── Reduced motion: static left-aligned layout ─────────────────
         <div
           style={{
@@ -255,8 +317,6 @@ export function HeroSection() {
             <span style={{ paddingLeft: '1.5ch' }}>RAINERI</span>
           </h1>
         </div>
-      ) : (
-        <HeroCanvas isMobile={isMobile} />
       )}
 
       <section
@@ -358,18 +418,21 @@ export function HeroSection() {
           {/* Terminal line */}
           <div
             ref={subtitleRef}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', opacity: 0, position: 'relative', zIndex: 2 }}
+            className="hero-magnetic-wrapper"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', opacity: 0, position: 'relative', zIndex: 2, pointerEvents: 'auto', padding: '0.5rem 0' }}
           >
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', color: 'var(--accent-magenta)', opacity: 0.9 }}>
-              &gt;
+            <span className="hero-magnetic-target" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', color: 'var(--accent-magenta)', opacity: 0.9 }}>
+                &gt;
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', fontWeight: 400, color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                COMPUTER ENGINEERING · FRONTEND &amp; CREATIVE DEV
+              </span>
+              <span
+                className="hero-cursor"
+                style={{ display: 'inline-block', width: '2px', height: '1.1em', backgroundColor: 'var(--accent)' }}
+              />
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', fontWeight: 400, color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              COMPUTER ENGINEERING · FRONTEND &amp; CREATIVE DEV
-            </span>
-            <span
-              className="hero-cursor"
-              style={{ display: 'inline-block', width: '2px', height: '1.1em', backgroundColor: 'var(--accent)' }}
-            />
           </div>
 
           {/* Tagline */}
@@ -396,9 +459,12 @@ export function HeroSection() {
               <span
                 key={word}
                 ref={(el) => { taglineWordsRef.current[i] = el }}
-                style={{ display: 'block', opacity: 0, transform: 'translateY(12px)' }}
+                className="hero-magnetic-wrapper"
+                style={{ display: 'block', opacity: 0, transform: 'translateY(12px)', pointerEvents: 'auto', paddingLeft: '2px' }}
               >
-                <ScrambleText text={word} />
+                <div className="hero-magnetic-target" style={{ display: 'inline-block' }}>
+                  <ScrambleText text={word} />
+                </div>
               </span>
             ))}
           </p>
@@ -435,8 +501,9 @@ export function HeroSection() {
           </div>
 
           {/* CTA button — Holographic Hollow styled */}
-          <div ref={ctaWrapperRef} style={{ opacity: 0 }}>
+          <div ref={ctaWrapperRef} className="hero-magnetic-wrapper" style={{ opacity: 0 }}>
             <motion.button
+              className="hero-magnetic-target"
               onClick={() => scrollToSection('#contact')}
               style={{
                 fontFamily: 'var(--font-mono)',
