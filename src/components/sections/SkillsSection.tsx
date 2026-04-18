@@ -52,6 +52,33 @@ export function SkillsSection() {
       // Use CSS height of section instead of JS window calculations
       // Section is set to 400vh below.
 
+      // --- INITIAL STATE SETUP ---
+      // Apply the `progress = 0` configuration instantly so elements are positioned correctly
+      // when sliding into the viewport (preventing 'FRONTEND ARCHITECTURE' from being clipped
+      // and snapping into view).
+      const initProgress = 0;
+      if (listRef.current) {
+         const shiftY = (0.5 - initProgress) * (isMobile ? 240 : 380)
+         gsap.set(listRef.current, { y: shiftY })
+      }
+      
+      textRefs.current.forEach((el, index) => {
+        if (!el) return
+        const center = index * 0.5
+        const dist = Math.abs(initProgress - center)
+        const intensity = Math.max(0, 1.0 - dist * 3.5)
+        const easeIntensity = gsap.parseEase("power3.out")(intensity)
+        const highlightColor = intensity > 0.5 ? 'var(--text-primary)' : 'var(--text-secondary)'
+        
+        gsap.set(el, {
+           opacity: Math.max(0.1, intensity),
+           color: highlightColor,
+           x: isMobile ? 0 : easeIntensity * 30,
+           scale: 1.0 + easeIntensity * 0.05,
+           filter: `blur(${(1.0 - intensity) * 2}px)`
+        })
+      })
+
       // --- CONTINUOUS WHEEL PHYSICS: ABOUT -> SKILLS TRANSITION ---
       // This trigger runs exactly when the section is sliding up the screen (unpinned physical scroll gap)
       ScrollTrigger.create({

@@ -71,6 +71,68 @@ const getGridPoints = (count: number, size: number) => {
   return pts
 }
 
+// 4. PROJECTS/FORGE: Vortex Ring — particles spiral in a tight helix around a central axis
+const getVortexPoints = (count: number, radius: number, height: number) => {
+  const pts = new Float32Array(count * 3)
+  for (let i = 0; i < count; i++) {
+    const t = i / count
+    
+    // 85% of particles form the helix ring shell
+    // 15% form a subtle inner energy column
+    if (t < 0.85) {
+      // Helix ring: particles spiral upward in a cylinder shell
+      const angle = t * Math.PI * 2 * 10 // 10 full rotations for elegant helix
+      const y = (t / 0.85 - 0.5) * height
+      const r = radius * (0.85 + Math.sin(t * Math.PI * 6) * 0.15) // Breathing radius
+      
+      // Add subtle randomness for organic feel
+      const rJitter = (Math.random() - 0.5) * radius * 0.12
+      const yJitter = (Math.random() - 0.5) * height * 0.04
+      
+      pts[i * 3]     = Math.cos(angle) * (r + rJitter)
+      pts[i * 3 + 1] = y + yJitter
+      pts[i * 3 + 2] = Math.sin(angle) * (r + rJitter)
+    } else {
+      // Inner energy column: sparse vertical stream through the center
+      const innerT = (t - 0.85) / 0.15
+      const y = (innerT - 0.5) * height * 0.6
+      const innerR = radius * 0.08 * Math.random()
+      const angle = Math.random() * Math.PI * 2
+      
+      pts[i * 3]     = Math.cos(angle) * innerR
+      pts[i * 3 + 1] = y
+      pts[i * 3 + 2] = Math.sin(angle) * innerR
+    }
+  }
+  return pts
+}
+
+// 5. CONTACT: The Singularity Core — dense event horizon and pulsar center
+const getSingularityPoints = (count: number, radius: number) => {
+  const pts = new Float32Array(count * 3)
+  for (let i = 0; i < count; i++) {
+    const t = i / count
+    if (t < 0.6) {
+      // Dense ultra-compact spherical core
+      const phi = Math.acos(-1 + (2 * t) / 0.6)
+      const theta = Math.sqrt(0.6 * count * Math.PI) * phi
+      const r = radius * 0.25 * Math.pow(Math.random(), 0.5)
+      pts[i * 3]     = r * Math.cos(theta) * Math.sin(phi)
+      pts[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi)
+      pts[i * 3 + 2] = r * Math.cos(phi)
+    } else {
+      // Orbital rings collapsing into the center (accretion disk)
+      const angle = Math.random() * Math.PI * 2
+      const r = radius * (0.25 + 0.75 * Math.pow(Math.random(), 2))
+      const y = (Math.random() - 0.5) * radius * 0.05
+      pts[i * 3]     = Math.cos(angle) * r
+      pts[i * 3 + 1] = y
+      pts[i * 3 + 2] = Math.sin(angle) * r
+    }
+  }
+  return pts
+}
+
 const getRandomAttributes = (count: number) => {
   const aRandom = new Float32Array(count * 3)
   for (let i = 0; i < count * 3; i++) {
@@ -133,6 +195,8 @@ const vertexShader = `
 
   attribute vec3 aPosition2;
   attribute vec3 aPosition3;
+  attribute vec3 aPosition4;
+  attribute vec3 aPosition5;
   attribute vec3 aRandom;
 
   uniform float uProgress; 
@@ -142,28 +206,46 @@ const vertexShader = `
 
   varying vec3 vColorBias;
   varying float vInfluence;
+  varying float vState;
 
   void main() {
-    float state = clamp(uProgress, 0.0, 2.0);
+    float state = clamp(uProgress, 0.0, 4.0);
+    vState = state;
     
-    // Smooth interpolations between the 3 targets
+    // Smooth interpolations between the 5 targets
     vec3 posBase;
     
     // Exponential ease for explosive transitions!
     float t1 = smoothstep(0.0, 1.0, state);
     float t2 = smoothstep(0.0, 1.0, state - 1.0);
+    float t3 = smoothstep(0.0, 1.0, state - 2.0);
+    float t4 = smoothstep(0.0, 1.0, state - 3.0);
     
     if (state <= 1.0) {
         posBase = mix(position, aPosition2, t1);
-    } else {
+    } else if (state <= 2.0) {
         posBase = mix(aPosition2, aPosition3, t2);
+    } else if (state <= 3.0) {
+        posBase = mix(aPosition3, aPosition4, t3);
+    } else {
+        posBase = mix(aPosition4, aPosition5, t4);
     }
     
     // Add continuous noise based on current state
-    // Phase 1 Torus uses gentle fluid ripples (1.2) rather than explosive shaking
     float noiseTarget1 = mix(0.2, 1.2, t1);  
-    float noiseTarget2 = mix(1.2, 0.05, t2); // constrain to grid
-    float noiseAmount = mix(noiseTarget1, noiseTarget2, t2);
+    float noiseTarget2 = mix(1.2, 0.05, t2); 
+    float noiseTarget3 = mix(0.05, 0.4, t3); 
+    float noiseTarget4 = mix(0.4, 0.8, t4); // Singularity: high turbulence in the core
+    float noiseAmount;
+    if (state <= 1.0) {
+      noiseAmount = noiseTarget1;
+    } else if (state <= 2.0) {
+      noiseAmount = mix(noiseTarget1, noiseTarget2, t2);
+    } else if (state <= 3.0) {
+      noiseAmount = mix(noiseTarget2, noiseTarget3, t3);
+    } else {
+      noiseAmount = mix(noiseTarget3, noiseTarget4, t4);
+    }
     
     float pulse = sin(uTime * 2.0 + aRandom.x * 10.0) * 0.5 + 0.5;
     
@@ -176,12 +258,16 @@ const vertexShader = `
     posBase += noise;
 
     // Optional spinning logic based on state
-    // Frontend spins slow, Webgl spins fast, Backend static
-    float spinSpeed = mix(
-      mix(uTime * 0.2, uTime * 0.8, t1),
-      mix(uTime * 0.8, uTime * 0.0, t2),
-      t2
-    );
+    float spinSpeed;
+    if (state <= 1.0) {
+      spinSpeed = mix(uTime * 0.2, uTime * 0.8, t1);
+    } else if (state <= 2.0) {
+      spinSpeed = mix(uTime * 0.8, uTime * 0.0, t2);
+    } else if (state <= 3.0) {
+      spinSpeed = mix(uTime * 0.0, uTime * 0.3, t3); 
+    } else {
+      spinSpeed = mix(uTime * 0.3, uTime * 1.5, t4); // Singularity: fast dizzying spin
+    }
     
     float s = sin(spinSpeed);
     float c = cos(spinSpeed);
@@ -189,8 +275,13 @@ const vertexShader = `
     
     posBase.xz *= rotMat;
     
-    // Additional Y tilt
-    posBase.xy *= mat2(cos(0.2), -sin(0.2), sin(0.2), cos(0.2));
+    float tiltAmount;
+    if (state <= 3.0) {
+       tiltAmount = mix(0.2, 0.05, t3);
+    } else {
+       tiltAmount = mix(0.05, 0.4, t4); // Tilt for Singularity accretion disk
+    }
+    posBase.xy *= mat2(cos(tiltAmount), -sin(tiltAmount), sin(tiltAmount), cos(tiltAmount));
 
     // --- MOUSE REPULSION / INTERACTION / PHYSICS ---
     vec4 worldPos = modelMatrix * vec4(posBase, 1.0);
@@ -220,14 +311,36 @@ const vertexShader = `
     else if(ay > az) manhattanDir = vec3(0.0, sign(posBase.y), 0.0);
     else manhattanDir = vec3(0.0, 0.0, sign(posBase.z));
 
-    vec3 interactionDir = mix(
-        mix(pushDir, gravityPull, t1), 
-        manhattanDir, 
-        t2
-    );
+    // Vortex: Tangential swirl — particles push perpendicular to their radius
+    vec3 radialXZ = normalize(vec3(posBase.x, 0.0, posBase.z));
+    vec3 tangent = cross(radialXZ, vec3(0.0, 1.0, 0.0));
+    vec3 vortexDir = tangent + vec3(0.0, snoise(posBase * 2.0 + uTime) * 0.3, 0.0);
+
+    // Singularity: Extreme gravity pull to the center point
+    vec3 singularityDir = -pushDir + tangent * 0.5;
+
+    vec3 interactionDir;
+    if (state <= 1.0) {
+      interactionDir = mix(pushDir, gravityPull, t1);
+    } else if (state <= 2.0) {
+      interactionDir = mix(gravityPull, manhattanDir, t2);
+    } else if (state <= 3.0) {
+      interactionDir = mix(manhattanDir, vortexDir, t3);
+    } else {
+      interactionDir = mix(vortexDir, singularityDir, t4);
+    }
 
     // Dynamic strength
-    float strength = mix(mix(2.5, 6.0, t1), 4.0, t2);
+    float strength;
+    if (state <= 1.0) {
+      strength = mix(2.5, 6.0, t1);
+    } else if (state <= 2.0) {
+      strength = mix(6.0, 4.0, t2);
+    } else if (state <= 3.0) {
+      strength = mix(4.0, 5.0, t3); 
+    } else {
+      strength = mix(5.0, 8.0, t4); // Singularity: intense mouse reaction
+    }
     posBase += interactionDir * influence * strength;
 
     // --- EXECUTE RENDER ---
@@ -237,11 +350,19 @@ const vertexShader = `
     vColorBias = aRandom;
     vInfluence = influence;
     
-    // Blinking logic for backend servers
     float blink = step(0.98, fract(sin(dot(posBase.xyz, vec3(12.9898, 78.233, 45.164))) * 43758.5453 + uTime * 2.0));
-    vColorBias.z = mix(aRandom.z, blink, t2); 
+    vColorBias.z = mix(aRandom.z, blink, t2 * (1.0 - t3)); 
     
-    gl_PointSize = (3.0 + aRandom.x * 6.0 + scanner * 12.0 * isFrontend) * uPixelRatio * (20.0 / -mvPosition.z);
+    // Vortex / Singularity Energy pulse
+    float centerDist = length(posBase.xz);
+    float energyPulse = smoothstep(2.0, 0.0, centerDist) * t3 * 0.5;
+    vColorBias.y = mix(vColorBias.y, energyPulse + 0.3, t3);
+    
+    // Size logic
+    float vortexSize = mix(0.0, smoothstep(3.0, 0.0, centerDist) * 2.0, t3);
+    float singularitySize = mix(0.0, smoothstep(2.0, 0.0, centerDist) * 4.0 + (aRandom.y * 3.0), t4);
+    
+    gl_PointSize = (3.0 + aRandom.x * 6.0 + scanner * 12.0 * isFrontend + vortexSize + singularitySize) * uPixelRatio * (20.0 / -mvPosition.z);
   }
 `
 
@@ -251,36 +372,51 @@ const fragmentShader = `
   
   varying vec3 vColorBias;
   varying float vInfluence;
+  varying float vState;
   
   void main() {
     float dist = length(gl_PointCoord - vec2(0.5));
     if(dist > 0.5) discard;
     
-    // Override raw alpha logic when transitioning to Grid state
-    float state = clamp(uProgress, 0.0, 2.0);
+    // Override raw alpha logic when transitioning
+    float state = clamp(uProgress, 0.0, 4.0);
     float t2 = smoothstep(0.0, 1.0, state - 1.0);
+    float t3 = smoothstep(0.0, 1.0, state - 2.0);
+    float t4 = smoothstep(0.0, 1.0, state - 3.0);
     
     float shapeAlpha = pow(1.0 - (dist * 2.0), 3.0);
     float normalAlpha = shapeAlpha * (0.3 + vColorBias.y * 0.7) * uOpacity;
-    
-    // In grid state, vColorBias.z holds the blinking flag (0.0 or 1.0).
-    // Ensure nodes remain faintly visible (0.2) and blink intensely (1.0).
     float gridAlpha = shapeAlpha * mix(0.15, 1.0, vColorBias.z) * uOpacity;
+    float vortexAlpha = shapeAlpha * (0.25 + vColorBias.y * 0.35) * uOpacity;
+    float singularityAlpha = shapeAlpha * (0.1 + vColorBias.y * 0.8) * uOpacity; // High contrast
     
-    float alpha = mix(normalAlpha, gridAlpha, t2);
+    float alpha;
+    if (state <= 2.0) {
+      alpha = mix(normalAlpha, gridAlpha, t2);
+    } else if (state <= 3.0) {
+      alpha = mix(gridAlpha, vortexAlpha, t3);
+    } else {
+      alpha = mix(vortexAlpha, singularityAlpha, t4);
+    }
     
     // Core brand colors
     vec3 colFront = vec3(0.0, 0.9, 1.0);   // Frontend Cyan
     vec3 colWeb   = vec3(0.0, 0.2, 1.0);   // WebGL Void Blue
     vec3 colBack  = vec3(0.0, 1.0, 0.53);  // Backend Seafoam Green
+    vec3 colForge = vec3(0.0, 0.85, 1.0);  // Forge Reactor Cyan
+    vec3 colContact = vec3(1.0, 0.1, 0.5); // Singularity hot Magenta/Pink
     
     float t1 = smoothstep(0.0, 1.0, state);
     
     vec3 baseColor;
     if (state <= 1.0) {
        baseColor = mix(colFront, colWeb, t1);
-    } else {
+    } else if (state <= 2.0) {
        baseColor = mix(colWeb, colBack, t2);
+    } else if (state <= 3.0) {
+       baseColor = mix(colBack, colForge, t3);
+    } else {
+       baseColor = mix(colForge, colContact, t4);
     }
     
     // Pulse hot white spots
@@ -290,6 +426,15 @@ const fragmentShader = `
     float isTorus = clamp(state, 0.0, 1.0) - clamp(state - 1.0, 0.0, 1.0);
     vec3 glitchColor = mix(colFront, vec3(1.0), step(0.5, vColorBias.x)); 
     color = mix(color, glitchColor, isTorus * vInfluence * 0.8);
+    
+    // State 3 Forge: Energy particles near center glow with subtle warmth
+    vec3 forgeHot = mix(colForge, vec3(0.8, 0.95, 1.0), vColorBias.y * 0.4);
+    color = mix(color, forgeHot, t3 * (1.0 - t4) * vColorBias.y * 0.6); // Fade out as t4 kicks in
+    
+    // State 4 Singularity: Super hot white/orange core
+    vec3 coreHot = mix(colContact, vec3(1.0, 0.9, 0.8), vColorBias.y * 0.8);
+    color = mix(color, coreHot, t4 * vColorBias.y * 0.9);
+
     
     gl_FragColor = vec4(color, alpha);
   }
@@ -313,13 +458,15 @@ export function MorphParticles({ isMobile }: MorphParticlesProps) {
     return () => window.removeEventListener('pointermove', onMove)
   }, [isMobile])
 
-  const { p1, p2, p3, pRnd } = useMemo(() => {
+  const { p1, p2, p3, p4, p5, pRnd } = useMemo(() => {
     // Aumentato lo scale base da 1.0 a 1.4 per desktop
     const scale = isMobile ? 0.8 : 1.4
     return {
       p1: getSpherePoints(PARTICLE_COUNT, 10 * scale), // Raggio aumentato da 8 a 10
       p2: getTorusPoints(PARTICLE_COUNT, 12 * scale, 4 * scale), // Aumentato da 10 e 3
       p3: getGridPoints(PARTICLE_COUNT, 16 * scale), // Aumentato da 14
+      p4: getVortexPoints(PARTICLE_COUNT, 10 * scale, 14 * scale), // Forge vortex — wider ring, shorter height
+      p5: getSingularityPoints(PARTICLE_COUNT, 8 * scale), // Contact singularity — very dense and relatively small
       pRnd: getRandomAttributes(PARTICLE_COUNT)
     }
   }, [isMobile])
@@ -379,6 +526,8 @@ export function MorphParticles({ isMobile }: MorphParticlesProps) {
           <bufferAttribute attach="attributes-position" count={PARTICLE_COUNT} array={p1} itemSize={3} />
           <bufferAttribute attach="attributes-aPosition2" count={PARTICLE_COUNT} array={p2} itemSize={3} />
           <bufferAttribute attach="attributes-aPosition3" count={PARTICLE_COUNT} array={p3} itemSize={3} />
+          <bufferAttribute attach="attributes-aPosition4" count={PARTICLE_COUNT} array={p4} itemSize={3} />
+          <bufferAttribute attach="attributes-aPosition5" count={PARTICLE_COUNT} array={p5} itemSize={3} />
           <bufferAttribute attach="attributes-aRandom" count={PARTICLE_COUNT} array={pRnd} itemSize={3} />
         </bufferGeometry>
         <shaderMaterial 
