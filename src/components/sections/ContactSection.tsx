@@ -362,11 +362,15 @@ export function ContactSection() {
 
       if (!prefersReducedMotion) {
         ScrollTrigger.create({
-          trigger: sectionRef.current,
-          start: 'top bottom', 
-          end: 'top 20%',
+          trigger: '#global-scroll-track',
+          start: '88% top', 
+          end: '92% top',
           scrub: true,
           onUpdate: (self) => {
+            if (sectionRef.current) {
+               sectionRef.current.style.opacity = String(self.progress);
+               sectionRef.current.style.pointerEvents = self.progress > 0.5 ? 'auto' : 'none';
+            }
             const morph = 3.0 + self.progress * 1.0
             document.documentElement.style.setProperty('--p-morph', String(morph))
             document.documentElement.style.setProperty('--p-x', '0')
@@ -385,9 +389,9 @@ export function ContactSection() {
         })
 
         ScrollTrigger.create({
-          trigger: sectionRef.current,
-          start: 'top 20%',
-          end: 'bottom bottom',
+          trigger: '#global-scroll-track',
+          start: '92% top',
+          end: '100% top',
           onEnter: () => {
              document.documentElement.style.setProperty('--p-morph', '4')
              document.documentElement.style.setProperty('--p-flash', '2.0')
@@ -409,8 +413,8 @@ export function ContactSection() {
           duration: 1.2,
           ease: 'power3.out',
           scrollTrigger: {
-             trigger: sectionRef.current,
-             start: 'top 70%',
+             trigger: '#global-scroll-track',
+             start: '90% top',
              toggleActions: 'play none none reverse',
           }
         }
@@ -427,8 +431,8 @@ export function ContactSection() {
           stagger: 0.15,
           ease: 'back.out(1.2)',
           scrollTrigger: {
-             trigger: listRef.current,
-             start: 'top 80%',
+             trigger: '#global-scroll-track',
+             start: '92% top',
              toggleActions: 'play none none reverse',
           }
         }
@@ -443,9 +447,9 @@ export function ContactSection() {
       ref={sectionRef}
       id="contact"
       aria-label="Contact Information"
-      className="relative w-full flex flex-col items-center justify-center overflow-hidden"
+      className="absolute inset-0 z-[5] w-full flex flex-col items-center justify-center overflow-hidden pointer-events-none"
       style={{
-        minHeight: '100vh',
+        opacity: 0,
         padding: isMobile ? 'var(--space-xl) var(--space-md)' : 'var(--space-2xl) var(--space-lg)',
       }}
     >

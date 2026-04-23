@@ -80,13 +80,16 @@ export function SkillsSection() {
       })
 
       // --- CONTINUOUS WHEEL PHYSICS: ABOUT -> SKILLS TRANSITION ---
-      // This trigger runs exactly when the section is sliding up the screen (unpinned physical scroll gap)
       ScrollTrigger.create({
-        trigger: containerRef.current,
-        start: 'top bottom', // When Skills starts entering from bottom
-        end: 'top top',      // When Skills hits the top and locks
+        trigger: '#global-scroll-track',
+        start: '38% top',
+        end: '42% top',
         scrub: true,
         onUpdate: (self) => {
+          if (containerRef.current) {
+             containerRef.current.style.opacity = String(self.progress);
+             containerRef.current.style.pointerEvents = self.progress > 0.5 ? 'auto' : 'none';
+          }
           // Interpolate Morph: Grid (2.0) -> Sphere (0.0)
           document.documentElement.style.setProperty('--p-morph', String(2.0 - self.progress * 2.0))
           
@@ -116,19 +119,10 @@ export function SkillsSection() {
       })
       
       ScrollTrigger.create({
-        trigger: containerRef.current,
-        pin: pinRef.current,
-        start: 'top top',
-        end: '+=300%',
-        pinSpacing: false,
-        scrub: 0.5, // Reduced from 1.2 to 0.5: tighter control, less floaty lag
-        snap: {
-          snapTo: [0, 0.5, 1],
-          duration: { min: 0.4, max: 0.8 },
-          delay: 0.3, // Wait 300ms before taking over, preventing accidental autoscrolling
-          inertia: false,
-          ease: "sine.inOut"
-        },
+        trigger: '#global-scroll-track',
+        start: '42% top',
+        end: '70% top',
+        scrub: 0.5,
         onUpdate: (self) => {
           // --- GLOBAL PARTICLE TRACKING ---
           const targetShaderState = self.progress * 2.0
@@ -185,6 +179,14 @@ export function SkillsSection() {
           })
         }
       })
+      
+      // Exit Transition (70% to 72%)
+      gsap.fromTo(containerRef.current,
+         { opacity: 1 },
+         { opacity: 0, ease: 'power2.inOut', immediateRender: false,
+           scrollTrigger: { trigger: '#global-scroll-track', start: '70% top', end: '72% top', scrub: true }
+         }
+      )
     },
     { scope: containerRef, dependencies: [prefersReducedMotion, isMobile] }
   )
@@ -194,15 +196,12 @@ export function SkillsSection() {
       ref={containerRef}
       id="skills"
       aria-label="Core Architectures"
-      className="relative w-full"
-      style={{
-         height: prefersReducedMotion ? 'auto' : '400vh',
-         marginTop: prefersReducedMotion ? '0' : '30vh' 
-      }}
+      className="absolute inset-0 z-[3] w-full h-full pointer-events-none"
+      style={{ opacity: 0 }}
     >
       <div 
         ref={pinRef} 
-        className="w-full h-screen overflow-hidden flex flex-col md:flex-row relative z-10"
+        className="w-full h-full overflow-hidden flex flex-col md:flex-row relative z-10"
       >
         
         {/* RIGHT (Background on mobile): The Global Canvas presence (handled globally) */}

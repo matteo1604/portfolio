@@ -82,21 +82,49 @@ export function AboutSection() {
   useGSAP(() => {
     if (!pinRef.current || !sectionRef.current) return
 
-    // Animate the fixed background crossfade
     if (bgWrapperRef.current && !prefersReducedMotion) {
       gsap.fromTo(bgWrapperRef.current, 
         { opacity: 0 }, 
         { opacity: 1, 
           ease: 'power1.inOut', 
           scrollTrigger: {
-             trigger: sectionRef.current,
-             start: 'top 80%', 
-             end: 'top 20%',
+             trigger: '#global-scroll-track',
+             start: '12% top', 
+             end: '16% top',
              scrub: true
           }
         }
       )
     }
+    
+    // Manage Pointer Events and Exit Opacity
+    ScrollTrigger.create({
+      trigger: '#global-scroll-track',
+      start: '12% top',
+      end: '40% top',
+      onUpdate: (self) => {
+         if (sectionRef.current) {
+            sectionRef.current.style.pointerEvents = (self.progress > 0 && self.progress < 0.95) ? 'auto' : 'none'
+         }
+      }
+    })
+
+    // Entry Transition (12% to 16%)
+    gsap.fromTo(sectionRef.current, 
+       { clipPath: 'circle(0% at 50% 50%)', opacity: 0 }, 
+       { clipPath: 'circle(150% at 50% 50%)', opacity: 1, ease: 'power2.inOut', 
+         scrollTrigger: { trigger: '#global-scroll-track', start: '12% top', end: '16% top', scrub: true } 
+       }
+    )
+
+    // Exit Transition (40% to 42%)
+    gsap.fromTo(sectionRef.current, 
+       { opacity: 1 }, 
+       { opacity: 0, ease: 'power2.inOut', immediateRender: false,
+         scrollTrigger: { trigger: '#global-scroll-track', start: '40% top', end: '42% top', scrub: true } 
+       }
+    )
+
 
     if (prefersReducedMotion) {
       gsap.set(stageRefs.current, { opacity: 0 })
@@ -168,19 +196,19 @@ export function AboutSection() {
 
       gsap.fromTo(words, { y: 60 }, {
         y: 0, duration: 0.8, stagger: 0.05, ease: 'back.out(1.7)',
-        scrollTrigger: { trigger: sectionRef.current, start: 'top 60%', toggleActions: "play none none reverse" }
+        scrollTrigger: { trigger: '#global-scroll-track', start: '14% top', toggleActions: "play none none reverse" }
       })
       gsap.fromTo(numberEl, { y: 100, opacity: 0 }, {
         y: 0, opacity: 1, duration: 1, ease: 'power3.out',
-        scrollTrigger: { trigger: sectionRef.current, start: 'top 60%', toggleActions: "play none none reverse" }
+        scrollTrigger: { trigger: '#global-scroll-track', start: '14% top', toggleActions: "play none none reverse" }
       })
       gsap.fromTo(subEl, { x: -30, opacity: 0 }, {
         x: 0, opacity: 1, duration: 0.8, ease: 'power2.out', delay: 0.3,
-        scrollTrigger: { trigger: sectionRef.current, start: 'top 60%', toggleActions: "play none none reverse" }
+        scrollTrigger: { trigger: '#global-scroll-track', start: '14% top', toggleActions: "play none none reverse" }
       })
       gsap.to(ideLineRefs.current.slice(firstSlide.startLine - 1, firstSlide.endLine), {
         opacity: 1, duration: 0.5,
-        scrollTrigger: { trigger: sectionRef.current, start: 'top 60%', toggleActions: "play none none reverse" }
+        scrollTrigger: { trigger: '#global-scroll-track', start: '14% top', toggleActions: "play none none reverse" }
       })
     }
 
@@ -235,12 +263,10 @@ export function AboutSection() {
 
     const tl = gsap.timeline({
       scrollTrigger: {
-        trigger: sectionRef.current,
-        start: 'top top',
-        end: '+=200%',
+        trigger: '#global-scroll-track',
+        start: '16% top',
+        end: '40% top',
         scrub: 1,
-        pin: pinRef.current,
-        pinSpacing: false,
         onEnter: switchToGrid,
         onEnterBack: switchToGrid,
         onLeaveBack: revertToHero,
@@ -289,45 +315,42 @@ export function AboutSection() {
         const enterTime = exitTime + 0.5
         
         // 1. Move cursor & toggle IDE code opacity
-        tl.fromTo(cursorRef.current, { 
-            top: (slide.startLine - 1) * LINE_HEIGHT, 
-            height: (slide.endLine - slide.startLine + 1) * LINE_HEIGHT
-        }, { 
+        tl.to(cursorRef.current, { 
             top: (nextSlide.startLine - 1) * LINE_HEIGHT, 
             height: (nextSlide.endLine - nextSlide.startLine + 1) * LINE_HEIGHT,
             duration: 1, 
             ease: 'expo.inOut' 
         }, exitTime)
         
-        tl.fromTo(ideLineRefs.current.slice(slide.startLine - 1, slide.endLine), 
-          { opacity: 1 }, { opacity: 0.3, duration: 0.5 }, exitTime)
+        tl.to(ideLineRefs.current.slice(slide.startLine - 1, slide.endLine), 
+          { opacity: 0.3, duration: 0.5 }, exitTime)
           
-        tl.fromTo(ideLineRefs.current.slice(nextSlide.startLine - 1, nextSlide.endLine), 
-          { opacity: 0.3 }, { opacity: 1, duration: 0.5 }, enterTime)
+        tl.to(ideLineRefs.current.slice(nextSlide.startLine - 1, nextSlide.endLine), 
+          { opacity: 1, duration: 0.5 }, enterTime)
         
         // 2. FADE OUT current stage with downward stagger & parallax
-        tl.fromTo(words, { y: 0, opacity: 1 }, { y: 60, opacity: 0, stagger: { amount: 0.15, from: "end" }, ease: 'power2.in', duration: 0.5 }, exitTime)
-        tl.fromTo(numberEl, { y: 0, opacity: 1 }, { y: 60, opacity: 0, ease: 'power3.in', duration: 0.5 }, exitTime)
-        tl.fromTo(subEl, { x: 0, opacity: 1 }, { opacity: 0, x: -20, ease: 'power2.in', duration: 0.4 }, exitTime)
+        tl.to(words, { y: 60, opacity: 0, stagger: { amount: 0.15, from: "end" }, ease: 'power2.in', duration: 0.5 }, exitTime)
+        tl.to(numberEl, { y: 60, opacity: 0, ease: 'power3.in', duration: 0.5 }, exitTime)
+        tl.to(subEl, { opacity: 0, x: -20, ease: 'power2.in', duration: 0.4 }, exitTime)
         
         // Hide old stage, show new stage containers (to prevent invisible animating text or lingering hitboxes)
         tl.set(stageEl, { opacity: 0, pointerEvents: 'none' }, exitTime + 0.5)
         tl.set(nextStageEl, { opacity: 1, pointerEvents: 'auto' }, exitTime + 0.5)
         
         // 3. FADE IN next stage with upward staggering
-        tl.fromTo(nextWords, { y: 60, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.05, ease: 'back.out(1.7)', duration: 0.8 }, enterTime)
-        tl.fromTo(nextNumberEl, { y: 100, opacity: 0 }, { y: 0, opacity: 1, ease: 'power3.out', duration: 1 }, enterTime)
-        tl.fromTo(nextSubEl, { x: 30, opacity: 0 }, { x: 0, opacity: 1, ease: 'power2.out', duration: 0.8 }, enterTime + 0.2)
+        // Since these are explicitly initially invisible, we can use fromTo but with immediateRender: false
+        tl.fromTo(nextWords, { y: 60, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.05, ease: 'back.out(1.7)', duration: 0.8, immediateRender: false }, enterTime)
+        tl.fromTo(nextNumberEl, { y: 100, opacity: 0 }, { y: 0, opacity: 1, ease: 'power3.out', duration: 1, immediateRender: false }, enterTime)
+        tl.fromTo(nextSubEl, { x: 30, opacity: 0 }, { x: 0, opacity: 1, ease: 'power2.out', duration: 0.8, immediateRender: false }, enterTime + 0.2)
     }
 
   }, { scope: sectionRef, dependencies: [prefersReducedMotion] })
 
   return (
-    <section ref={sectionRef} id="about" className="relative w-full" style={{ height: '300vh' }}>
+    <section ref={sectionRef} id="about" className="absolute inset-0 z-[2] w-full h-full pointer-events-none" style={{ opacity: 0, clipPath: 'circle(0% at 50% 50%)' }}>
       
-      {/* GLOBAL FIXED BACKGROUND FOR ABOUT SECTION */}
-      {/* We use a fixed wrapper and fade it in via GSAP to prevent any sliding hard edges! */}
-      <div ref={bgWrapperRef} style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
+      {/* GLOBAL BACKGROUND FOR ABOUT SECTION */}
+      <div ref={bgWrapperRef} style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
         
         {/* 1. Cosmic Nebula Background */}
         {!prefersReducedMotion && (
@@ -372,11 +395,11 @@ export function AboutSection() {
         )}
       </div>
 
-      {/* Pinned Viewport */}
+      {/* Viewport */}
       <div
         ref={pinRef}
-        className="flex flex-col w-full relative"
-        style={{ height: '100vh', zIndex: 2 }}
+        className="flex flex-col w-full h-full relative"
+        style={{ zIndex: 2 }}
       >
         {/* Main Content */}
         <div className="flex-1 flex flex-col lg:flex-row items-center justify-center w-full max-w-[1400px] mx-auto px-6 py-12 lg:p-16 gap-8 lg:gap-16 relative z-10">

@@ -156,13 +156,17 @@ export function HeroSection() {
       if (!sectionRef.current) return
 
       ScrollTrigger.create({
-        trigger: sectionRef.current,
-        start: 'top top',
-        end: 'bottom top',
+        trigger: '#global-scroll-track',
+        start: '0% top',
+        end: '20% top',
         scrub: true,
         onUpdate: (self) => {
           document.documentElement.style.setProperty('--hero-progress', String(self.progress))
           document.documentElement.style.setProperty('--hero-progress-pct', `${self.progress * 100}%`)
+          
+          if (sectionRef.current) {
+             sectionRef.current.style.pointerEvents = self.progress > 0.95 ? 'none' : 'auto'
+          }
           
           // --- GLOBAL PARTICLE TRACKING ---
           // Hero owns the scroll from 0 to 1.
@@ -237,12 +241,13 @@ export function HeroSection() {
 
       gsap.to(contentRef.current, {
         opacity: 0,
+        scale: 1.1,
         y: -40,
         ease: 'power2.in',
         scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: '40% top',
+          trigger: '#global-scroll-track',
+          start: '0% top',
+          end: '15% top',
           scrub: true,
         },
       })
@@ -253,9 +258,9 @@ export function HeroSection() {
           opacity: 0,
           ease: 'power2.in',
           scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top top',
-            end: '35% top',
+            trigger: '#global-scroll-track',
+            start: '0% top',
+            end: '10% top',
             scrub: true,
           },
         })
@@ -267,9 +272,9 @@ export function HeroSection() {
           opacity: 0,
           ease: 'power2.in',
           scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top top',
-            end: '30% top',
+            trigger: '#global-scroll-track',
+            start: '0% top',
+            end: '10% top',
             scrub: true,
           },
         })
@@ -323,7 +328,7 @@ export function HeroSection() {
         ref={sectionRef}
         id="hero"
         aria-label="Hero"
-        className="relative z-[1] flex min-h-screen flex-col"
+        className="absolute inset-0 z-[1] flex flex-col pointer-events-auto"
         style={{ paddingBottom: 'clamp(4rem, 8vh, 6rem)' }}
       >
         {/* ── HUD (desktop only) ─────────────────────────────────────── */}

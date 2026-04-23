@@ -119,11 +119,15 @@ export function ProjectsSection() {
       // When scrolling from Skills (grid, morph=2.0) into Projects,
       // morph to vortex (3.0), center the particles, and scale appropriately.
       ScrollTrigger.create({
-        trigger: sectionRef.current,
-        start: 'top bottom',
-        end: 'top 20%',
+        trigger: '#global-scroll-track',
+        start: '70% top',
+        end: '74% top',
         scrub: true,
         onUpdate: (self) => {
+          if (sectionRef.current) {
+             sectionRef.current.style.opacity = String(self.progress);
+             sectionRef.current.style.pointerEvents = self.progress > 0.5 ? 'auto' : 'none';
+          }
           // Morph: Grid (2.0) → Vortex (3.0)
           const morph = 2.0 + self.progress * 1.0
           document.documentElement.style.setProperty('--p-morph', String(morph))
@@ -150,9 +154,9 @@ export function ProjectsSection() {
       // ── PARTICLE STATE WHILE IN SECTION ─────────────────────────────
       // Keep the vortex state stable while the user is viewing the section
       ScrollTrigger.create({
-        trigger: sectionRef.current,
-        start: 'top 20%',
-        end: 'bottom 80%',
+        trigger: '#global-scroll-track',
+        start: '72% top',
+        end: '90% top',
         onEnter: () => {
           document.documentElement.style.setProperty('--p-morph', '3')
           document.documentElement.style.setProperty('--p-x', '0')
@@ -186,8 +190,8 @@ export function ProjectsSection() {
           duration: 1,
           ease: 'power3.out',
           scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 75%',
+            trigger: '#global-scroll-track',
+            start: '71% top',
             toggleActions: 'play none none reverse',
           },
         }
@@ -204,8 +208,8 @@ export function ProjectsSection() {
           duration: 1.4,
           ease: 'back.out(1.4)',
           scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 65%',
+            trigger: '#global-scroll-track',
+            start: '72% top',
             toggleActions: 'play none none reverse',
           },
         }
@@ -222,8 +226,8 @@ export function ProjectsSection() {
           duration: 1.6,
           ease: 'expo.out',
           scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 60%',
+            trigger: '#global-scroll-track',
+            start: '74% top',
             toggleActions: 'play none none reverse',
           },
         }
@@ -240,8 +244,8 @@ export function ProjectsSection() {
           stagger: 0.12,
           ease: 'power2.out',
           scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 55%',
+            trigger: '#global-scroll-track',
+            start: '76% top',
             toggleActions: 'play none none reverse',
           },
         }
@@ -257,11 +261,19 @@ export function ProjectsSection() {
           duration: 0.8,
           ease: 'power2.out',
           scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 45%',
+            trigger: '#global-scroll-track',
+            start: '78% top',
             toggleActions: 'play none none reverse',
           },
         }
+      )
+      
+      // Exit Transition (90% to 92%)
+      gsap.fromTo(sectionRef.current,
+         { opacity: 1 },
+         { opacity: 0, ease: 'power2.inOut', immediateRender: false,
+           scrollTrigger: { trigger: '#global-scroll-track', start: '90% top', end: '92% top', scrub: true }
+         }
       )
     },
     { scope: sectionRef, dependencies: [prefersReducedMotion, isMobile] }
@@ -272,9 +284,9 @@ export function ProjectsSection() {
       ref={sectionRef}
       id="projects"
       aria-label="Projects — Coming Soon"
-      className="relative w-full flex flex-col items-center justify-center overflow-hidden"
+      className="absolute inset-0 z-[4] w-full flex flex-col items-center justify-center overflow-hidden pointer-events-none"
       style={{
-        minHeight: '100vh',
+        opacity: 0,
         padding: isMobile ? 'var(--space-xl) var(--space-md)' : 'var(--space-2xl) var(--space-lg)',
       }}
     >

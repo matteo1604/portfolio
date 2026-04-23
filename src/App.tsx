@@ -11,7 +11,14 @@ export default function App() {
     <>
       <GlobalCanvas />
       <ScrollContainer>
-        <main id="main-content" className="relative z-10 w-full overflow-hidden text-white bg-transparent">
+        {/* Synthetic Scroll Track: defines total scroll duration */}
+        <div id="global-scroll-track" style={{ height: '2000vh' }} />
+
+        {/* Master Visual Container: fixed on screen, sections overlap */}
+        <main 
+          id="main-content" 
+          className="fixed inset-0 z-10 w-full h-full text-white pointer-events-none"
+        >
           <HeroSection />
           <AboutSection />
           <SkillsSection />
