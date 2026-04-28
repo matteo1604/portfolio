@@ -208,7 +208,9 @@ const CONTACT_LINKS = [
 
 // --- The Holographic Node Component ---
 
-const HolographicCard = ({ link, prefersReducedMotion }: { link: any, prefersReducedMotion: boolean }) => {
+type ContactLink = typeof CONTACT_LINKS[number]
+
+const HolographicCard = ({ link, prefersReducedMotion }: { link: ContactLink, prefersReducedMotion: boolean }) => {
    const [isHovered, setIsHovered] = useState(false)
    const cardRef = useRef<HTMLAnchorElement>(null)
    const glareRef = useRef<HTMLDivElement>(null)

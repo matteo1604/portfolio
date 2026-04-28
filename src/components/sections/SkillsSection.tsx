@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@/hooks/useGSAP'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { SECTION_SCROLL, toScrollTrigger } from '@/lib/scrollPhases'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -28,6 +29,7 @@ const SKILLS_DATA = [
 export function SkillsSection() {
   const containerRef = useRef<HTMLElement>(null)
   const pinRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   
   const textRefs = useRef<(HTMLDivElement | null)[]>([])
   const listRef = useRef<HTMLDivElement>(null)
@@ -43,6 +45,13 @@ export function SkillsSection() {
       
       if (prefersReducedMotion) {
         // Fallback for reduced motion: just list the texts naturally
+        if (containerRef.current) {
+          containerRef.current.style.opacity = '1'
+          containerRef.current.style.pointerEvents = 'auto'
+        }
+        if (contentRef.current) {
+          gsap.set(contentRef.current, { opacity: 1, y: 0, filter: 'blur(0px)' })
+        }
         textRefs.current.forEach(el => {
           if (el) gsap.set(el, { opacity: 1, y: 0 })
         })
@@ -54,6 +63,9 @@ export function SkillsSection() {
 
       // --- Pre-created quickSetters per item (single DOM-binding, reusable each tick) ---
       const listYSet = listRef.current ? gsap.quickSetter(listRef.current, 'y', 'px') : null
+      const contentYSet = contentRef.current ? gsap.quickSetter(contentRef.current, 'y', 'px') : null
+      const contentOpacitySet = contentRef.current ? gsap.quickSetter(contentRef.current, 'opacity') : null
+      const contentBlurSet = contentRef.current ? gsap.quickSetter(contentRef.current, 'filter') : null
       const itemSetters = textRefs.current.map(el => el ? {
         opacity: gsap.quickSetter(el, 'opacity'),
         x:       gsap.quickSetter(el, 'x', 'px'),
@@ -82,28 +94,49 @@ export function SkillsSection() {
 
       // --- INITIAL STATE SETUP ---
       if (listYSet) listYSet((0.5 - 0) * (isMobile ? 240 : 380))
+      if (contentYSet) contentYSet(48)
+      if (contentOpacitySet) contentOpacitySet(0)
+      if (contentBlurSet) contentBlurSet('blur(18px)')
       applyItemsAt(0)
 
-      // --- ENTRY 40→42% : crossfade sync'd with About exit (40→42) ---
+      // --- ENTRY 41→44% : let About fully resolve before Skills copy becomes legible ---
       ScrollTrigger.create({
         trigger: '#global-scroll-track',
-        start: '40% top',
-        end: '42% top',
+        start: toScrollTrigger(SECTION_SCROLL.skills.ambientStart),
+        end: toScrollTrigger(SECTION_SCROLL.skills.ambientEnd),
         scrub: true,
         onUpdate: (self) => {
           if (containerRef.current) {
-             containerRef.current.style.opacity = String(self.progress)
-             containerRef.current.style.pointerEvents = self.progress > 0.5 ? 'auto' : 'none'
+             const eased = gsap.parseEase('power2.out')(self.progress)
+             containerRef.current.style.opacity = String(eased * 0.7)
+             containerRef.current.style.pointerEvents = eased > 0.85 ? 'auto' : 'none'
           }
-          document.documentElement.style.setProperty('--p-opacity', String(0.6 + self.progress * 0.4))
+          document.documentElement.style.setProperty('--p-opacity', String(0.62 + self.progress * 0.18))
         }
       })
 
-      // --- ANIMATION 42→70% : list/text only. No morph writes — morph stays at 2.0 (grid) ---
       ScrollTrigger.create({
         trigger: '#global-scroll-track',
-        start: '42% top',
-        end: '70% top',
+        start: toScrollTrigger(SECTION_SCROLL.skills.copyStart),
+        end: toScrollTrigger(SECTION_SCROLL.skills.copyEnd),
+        scrub: true,
+        onUpdate: (self) => {
+          const eased = gsap.parseEase('power3.out')(self.progress)
+          if (containerRef.current) {
+            containerRef.current.style.opacity = String(0.7 + eased * 0.3)
+            containerRef.current.style.pointerEvents = eased > 0.4 ? 'auto' : 'none'
+          }
+          if (contentOpacitySet) contentOpacitySet(eased)
+          if (contentYSet) contentYSet((1 - eased) * 48)
+          if (contentBlurSet) contentBlurSet(`blur(${(1 - eased) * 18}px)`)
+        }
+      })
+
+      // --- ANIMATION 47→70% : list/text only. No morph writes — morph stays at 2.0 (grid) ---
+      ScrollTrigger.create({
+        trigger: '#global-scroll-track',
+        start: toScrollTrigger(SECTION_SCROLL.skills.focusStart),
+        end: toScrollTrigger(SECTION_SCROLL.skills.focusEnd),
         scrub: 0.5,
         onUpdate: (self) => {
           const p = self.progress
@@ -124,8 +157,8 @@ export function SkillsSection() {
       // --- EXIT 70→72% : fade-out section via direct-write (same pattern as entry) ---
       ScrollTrigger.create({
         trigger: '#global-scroll-track',
-        start: '70% top',
-        end: '72% top',
+        start: toScrollTrigger(SECTION_SCROLL.skills.exitStart),
+        end: toScrollTrigger(SECTION_SCROLL.skills.exitEnd),
         scrub: true,
         onUpdate: (self) => {
           if (containerRef.current) {
@@ -156,7 +189,10 @@ export function SkillsSection() {
         </div>
         
         {/* LEFT (Foreground on mobile): The UI Blocks */}
-        <div className="md:w-2/5 h-full flex flex-col justify-center px-8 md:px-16 z-10 md:order-1 select-none">
+        <div
+          ref={contentRef}
+          className="md:w-2/5 h-full flex flex-col justify-center px-8 md:px-16 z-10 md:order-1 select-none will-change-transform"
+        >
            <div className="flex flex-col gap-12 md:gap-20" ref={listRef}>
              {SKILLS_DATA.map((skill, idx) => (
                <div 

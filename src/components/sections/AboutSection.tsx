@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { useGSAP } from '@/hooks/useGSAP'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 import { ABOUT_SLIDES, tokenizePhrase } from '@/data/about-slides'
+import { SECTION_SCROLL, toScrollTrigger } from '@/lib/scrollPhases'
 gsap.registerPlugin(ScrollTrigger)
 
 const LINE_HEIGHT = 28 // height per IDE line in pixels
@@ -89,8 +90,8 @@ export function AboutSection() {
           ease: 'power1.inOut', 
           scrollTrigger: {
              trigger: '#global-scroll-track',
-             start: '12% top', 
-             end: '16% top',
+             start: toScrollTrigger(SECTION_SCROLL.about.revealStart), 
+             end: toScrollTrigger(SECTION_SCROLL.about.revealEnd),
              scrub: true
           }
         }
@@ -100,8 +101,8 @@ export function AboutSection() {
     // Manage Pointer Events
     ScrollTrigger.create({
       trigger: '#global-scroll-track',
-      start: '12% top',
-      end: '40% top',
+      start: toScrollTrigger(SECTION_SCROLL.about.activeStart),
+      end: toScrollTrigger(SECTION_SCROLL.about.exitEnd),
       onUpdate: (self) => {
          if (sectionRef.current) {
             sectionRef.current.style.pointerEvents = (self.progress > 0 && self.progress < 0.95) ? 'auto' : 'none'
@@ -113,26 +114,31 @@ export function AboutSection() {
     gsap.fromTo(sectionRef.current,
        { clipPath: 'circle(0% at 50% 50%)' },
        { clipPath: 'circle(150% at 50% 50%)', ease: 'power2.inOut',
-         scrollTrigger: { trigger: '#global-scroll-track', start: '12% top', end: '16% top', scrub: true }
+         scrollTrigger: {
+           trigger: '#global-scroll-track',
+           start: toScrollTrigger(SECTION_SCROLL.about.revealStart),
+           end: toScrollTrigger(SECTION_SCROLL.about.revealEnd),
+           scrub: true,
+         }
        }
     )
 
     // Entry opacity 0→1 (12% to 16%)
     ScrollTrigger.create({
       trigger: '#global-scroll-track',
-      start: '12% top',
-      end: '16% top',
+      start: toScrollTrigger(SECTION_SCROLL.about.revealStart),
+      end: toScrollTrigger(SECTION_SCROLL.about.revealEnd),
       scrub: true,
       onUpdate: (self) => {
          if (sectionRef.current) sectionRef.current.style.opacity = String(self.progress)
       }
     })
 
-    // Exit opacity 1→0 (40% to 42%)
+    // Exit opacity 1→0 with a slightly longer tail to clear space before Skills copy enters
     ScrollTrigger.create({
       trigger: '#global-scroll-track',
-      start: '40% top',
-      end: '42% top',
+      start: toScrollTrigger(SECTION_SCROLL.about.exitStart),
+      end: toScrollTrigger(SECTION_SCROLL.about.exitEnd),
       scrub: true,
       onUpdate: (self) => {
          if (sectionRef.current) sectionRef.current.style.opacity = String(1 - self.progress)
@@ -231,8 +237,8 @@ export function AboutSection() {
     let flashFired = false
     ScrollTrigger.create({
       trigger: '#global-scroll-track',
-      start: '12% top',
-      end: '16% top',
+      start: toScrollTrigger(SECTION_SCROLL.about.revealStart),
+      end: toScrollTrigger(SECTION_SCROLL.about.revealEnd),
       scrub: true,
       onUpdate: (self) => {
         const eased = gsap.parseEase('power2.inOut')(self.progress)
@@ -258,8 +264,8 @@ export function AboutSection() {
     const tl = gsap.timeline({
       scrollTrigger: {
         trigger: '#global-scroll-track',
-        start: '16% top',
-        end: '40% top',
+        start: toScrollTrigger(SECTION_SCROLL.about.revealEnd),
+        end: toScrollTrigger(SECTION_SCROLL.about.activeEnd),
         scrub: 1,
         onUpdate: (self) => {
           scrollProgressRef.current = self.progress

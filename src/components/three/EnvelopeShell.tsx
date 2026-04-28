@@ -77,8 +77,8 @@ const buildShellPoints = (count: number, radius: number) => {
 export function EnvelopeShell({ isMobile = false, reducedMotion = false }: EnvelopeShellProps) {
   const groupRef = useRef<THREE.Group>(null)
 
-  const count  = isMobile ? 1500 : 4000
-  const radius = isMobile ? 45   : 55
+  const count  = isMobile ? 900 : 2200
+  const radius = isMobile ? 42  : 52
 
   const { pos, sizes } = useMemo(() => buildShellPoints(count, radius), [count, radius])
 
@@ -90,7 +90,8 @@ export function EnvelopeShell({ isMobile = false, reducedMotion = false }: Envel
   }), [])
 
   useFrame((_, delta) => {
-    uniforms.uTime.value += delta
+    const dt = Math.min(delta, 1 / 30)
+    uniforms.uTime.value += dt
 
     const rawMorph    = parseFloat(document.documentElement.style.getPropertyValue('--p-morph')    || '0')
     const rawVelocity = parseFloat(document.documentElement.style.getPropertyValue('--scroll-velocity') || '0')
@@ -101,8 +102,8 @@ export function EnvelopeShell({ isMobile = false, reducedMotion = false }: Envel
     if (groupRef.current && !reducedMotion) {
       const baseSpeed = isMobile ? 0.008 : 0.014
       const velBoost  = isMobile ? 0 : uniforms.uVelocity.value * 0.01
-      groupRef.current.rotation.y += delta * (baseSpeed + velBoost)
-      groupRef.current.rotation.x += delta * 0.005
+      groupRef.current.rotation.y += dt * (baseSpeed + velBoost)
+      groupRef.current.rotation.x += dt * 0.005
     }
   })
 

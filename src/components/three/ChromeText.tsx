@@ -12,7 +12,7 @@ export interface ChromeTextRef {
   setEntranceProgress: (t: number) => void
 }
 
-export const ChromeText = forwardRef<ChromeTextRef, {}>((_, ref) => {
+export const ChromeText = forwardRef<ChromeTextRef, object>((_, ref) => {
   const groupRef = useRef<THREE.Group>(null)
   const group1Ref = useRef<THREE.Group>(null)
   const group2Ref = useRef<THREE.Group>(null)
@@ -23,7 +23,7 @@ export const ChromeText = forwardRef<ChromeTextRef, {}>((_, ref) => {
   const { size } = useThree()
   
   const isMobile = size.width < 768
-  const baseScale = isMobile ? 0.65 : 1.3 // Ingrandito del 30% circa
+  const baseScale = isMobile ? 0.72 : 1.45
 
   useImperativeHandle(ref, () => ({
     setVisible: (v) => {
@@ -46,7 +46,7 @@ export const ChromeText = forwardRef<ChromeTextRef, {}>((_, ref) => {
     },
     setScrollProgress: (v) => {
       if (groupRef.current) {
-        groupRef.current.position.y = v * 5.0
+        groupRef.current.position.y = 0.2 + v * 3.6
       }
     },
     setEntranceProgress: (t) => {
@@ -102,7 +102,7 @@ export const ChromeText = forwardRef<ChromeTextRef, {}>((_, ref) => {
   }
 
   return (
-    <group ref={groupRef} visible={false} position={[0, 0, 3]}>
+    <group ref={groupRef} visible={false} position={[0, 0.2, 3]}>
       {/* Dedicated rim lights to ensure the chrome always catches light */}
       <pointLight position={[-6, 3, 6]} intensity={3.0} color="#FFFFFF" distance={20} decay={2} />
       <pointLight position={[6, -2, 6]} intensity={2.0} color="#B0D0FF" distance={20} decay={2} />

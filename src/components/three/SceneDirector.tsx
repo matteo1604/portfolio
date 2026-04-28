@@ -1,10 +1,11 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, type Ref } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useMouseNDC } from '@/hooks/useMouseNDC'
 import { ChromeText, type ChromeTextRef } from './ChromeText'
 import { EffectComposer, Bloom, Noise } from '@react-three/postprocessing'
-import { BlendFunction } from 'postprocessing'
+import { BlendFunction, BloomEffect } from 'postprocessing'
+import { toProgress } from '@/lib/scrollPhases'
 
 // ── Camera keyframe poses ────────────────────────────────────────────────────
 interface Pose {
@@ -19,8 +20,8 @@ const POSES: Pose[] = [
   { t: 0.00, pos: [ 0,  0, 30], lookAt: [0, 0, 0], roll:  0, fov: 45 },
   { t: 0.17, pos: [ 2,  1, 22], lookAt: [0, 0, 0], roll: -6, fov: 55 }, // portal 1
   { t: 0.26, pos: [ 3,  0, 18], lookAt: [1, 0, 0], roll: -3, fov: 50 }, // About
-  { t: 0.41, pos: [-1, -2, 20], lookAt: [0, 0, 0], roll:  7, fov: 58 }, // portal 2
-  { t: 0.55, pos: [-2,  2, 22], lookAt: [0, 0, 0], roll:  2, fov: 48 }, // Skills
+  { t: toProgress(41.5), pos: [-1, -2, 20], lookAt: [0, 0, 0], roll:  6, fov: 56 }, // portal 2
+  { t: toProgress(50.5), pos: [-2,  1.4, 21], lookAt: [0, 0, 0], roll:  2, fov: 49 }, // Skills
   { t: 0.71, pos: [ 1, -1, 16], lookAt: [0, 0, 0], roll: -5, fov: 60 }, // portal 3
   { t: 0.82, pos: [ 0,  0, 14], lookAt: [0, 0, 0], roll:  0, fov: 55 }, // Projects
   { t: 0.91, pos: [ 0,  1,  8], lookAt: [0, 0, 0], roll:  4, fov: 65 }, // portal 4
@@ -74,6 +75,10 @@ interface SceneDirectorProps {
   reducedMotion?: boolean
 }
 
+type BloomHandle = {
+  intensity: number
+}
+
 export function SceneDirector({ isMobile, reducedMotion = false }: SceneDirectorProps) {
   const { camera } = useThree()
   const mouseNDC   = useMouseNDC()
@@ -81,7 +86,7 @@ export function SceneDirector({ isMobile, reducedMotion = false }: SceneDirector
   const phase       = useRef<Phase>('idle')
   const triggerTime = useRef<number | null>(null)
   const chromeRef   = useRef<ChromeTextRef>(null)
-  const bloomRef    = useRef<any>(null)
+  const bloomRef    = useRef<BloomHandle | null>(null)
   const flashState  = useRef(0)
 
   // Smoothed camera state — lerped toward desired pose each frame
@@ -107,11 +112,18 @@ export function SceneDirector({ isMobile, reducedMotion = false }: SceneDirector
       const t = setTimeout(trigger, 1500)
       return () => clearTimeout(t)
     }
+
+    const desktopFallback = window.setTimeout(trigger, 900)
     window.addEventListener('pointermove', trigger, { once: true })
-    return () => window.removeEventListener('pointermove', trigger)
+
+    return () => {
+      window.clearTimeout(desktopFallback)
+      window.removeEventListener('pointermove', trigger)
+    }
   }, [isMobile])
 
   useFrame((state, delta) => {
+    const dt = Math.min(delta, 1 / 30)
     const elapsed = state.clock.elapsedTime
 
     // ── Pre-settled phases: entry animation ──────────────────────────────
@@ -173,8 +185,8 @@ export function SceneDirector({ isMobile, reducedMotion = false }: SceneDirector
 
     // ChromeText (hero name) — scroll exit
     if (!isMobile) chromeRef.current?.setMouseInfluence(mouseNDC.current.x, mouseNDC.current.y)
-    chromeRef.current?.setScrollProgress(heroProg * 4.0)
-    chromeRef.current?.setOpacity(Math.max(0, 1 - heroProg * 3.0))
+    chromeRef.current?.setScrollProgress(heroProg * 3.0)
+    chromeRef.current?.setOpacity(Math.max(0, 1 - heroProg * 2.1))
 
     // ── Bloom flash (driven by --p-flash from sections/portals) ──────────
     const flashRaw = parseFloat(document.documentElement.style.getPropertyValue('--p-flash') || '0')
@@ -183,10 +195,10 @@ export function SceneDirector({ isMobile, reducedMotion = false }: SceneDirector
     if (bloomRef.current) {
       const targetBloom = flashState.current * 4.0
       // Delta-independent lerp toward target
-      bloomRef.current.intensity += (targetBloom - bloomRef.current.intensity) * (1 - Math.exp(-12 * delta))
+      bloomRef.current.intensity += (targetBloom - bloomRef.current.intensity) * (1 - Math.exp(-12 * dt))
     }
     // Delta-independent exponential decay (half-life ≈ 0.5s regardless of FPS)
-    flashState.current *= Math.pow(0.88, delta * 60)
+    flashState.current *= Math.pow(0.88, dt * 60)
 
     // ── Reduced motion: static pose ───────────────────────────────────────
     if (reducedMotion) {
@@ -207,9 +219,9 @@ export function SceneDirector({ isMobile, reducedMotion = false }: SceneDirector
     const targetRoll = _desiredRF.current.roll * rollAmp
 
     // Delta-independent smooth follow — speed constant in seconds not frames
-    const posSpeed  = 1 - Math.exp(-5  * delta)  // ~5 units/sec follow
-    const rollSpeed = 1 - Math.exp(-4  * delta)
-    const fovSpeed  = 1 - Math.exp(-3  * delta)
+    const posSpeed  = 1 - Math.exp(-5  * dt)  // ~5 units/sec follow
+    const rollSpeed = 1 - Math.exp(-4  * dt)
+    const fovSpeed  = 1 - Math.exp(-3  * dt)
 
     camPos.current.lerp(_desiredPos.current, posSpeed)
     camLookAt.current.lerp(_desiredLookAt.current, posSpeed)
@@ -242,9 +254,14 @@ export function SceneDirector({ isMobile, reducedMotion = false }: SceneDirector
 
       <ChromeText ref={chromeRef} />
 
-      <EffectComposer multisampling={4} autoClear={false}>
-        <Bloom ref={bloomRef} intensity={0} luminanceThreshold={0.5} luminanceSmoothing={0.9} />
-        <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={0.12} />
+      <EffectComposer multisampling={isMobile ? 0 : 2} autoClear={false}>
+        <Bloom
+          ref={bloomRef as unknown as Ref<typeof BloomEffect>}
+          intensity={0}
+          luminanceThreshold={0.5}
+          luminanceSmoothing={0.9}
+        />
+        <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={0.06} />
       </EffectComposer>
     </>
   )

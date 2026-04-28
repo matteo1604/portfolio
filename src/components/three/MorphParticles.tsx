@@ -7,7 +7,8 @@ interface MorphParticlesProps {
   isMobile?: boolean
 }
 
-const PARTICLE_COUNT = 8000
+const PARTICLE_COUNT_DESKTOP = 5600
+const PARTICLE_COUNT_MOBILE = 3600
 
 // --- ALGORITHMIC SHAPE GENERATORS ---
 
@@ -249,12 +250,9 @@ const vertexShader = `
     }
     
     float pulse = sin(uTime * 2.0 + aRandom.x * 10.0) * 0.5 + 0.5;
-    
-    vec3 noise = vec3(
-        snoise(posBase * 1.5 + uTime),
-        snoise(posBase.zyx * 1.5 - uTime),
-        snoise(posBase.xzy * 1.5)
-    ) * noiseAmount * pulse;
+    float noiseA = snoise(posBase * 1.25 + vec3(uTime));
+    float noiseB = snoise(posBase.zxy * 1.25 - vec3(uTime * 0.85));
+    vec3 noise = vec3(noiseA, noiseB, (noiseA + noiseB) * 0.5) * noiseAmount * pulse;
     
     posBase += noise;
 
@@ -447,19 +445,19 @@ export function MorphParticles({ isMobile }: MorphParticlesProps) {
   const baseRotationY = useRef(0)
   const mouseRef = useRef(new THREE.Vector2(0, 0))
   const mouseNDC = useMouseNDC()
+  const particleCount = isMobile ? PARTICLE_COUNT_MOBILE : PARTICLE_COUNT_DESKTOP
 
   const { p1, p2, p3, p4, p5, pRnd } = useMemo(() => {
-    // Aumentato lo scale base da 1.0 a 1.4 per desktop
     const scale = isMobile ? 0.8 : 1.4
     return {
-      p1: getSpherePoints(PARTICLE_COUNT, 10 * scale), // Raggio aumentato da 8 a 10
-      p2: getTorusPoints(PARTICLE_COUNT, 12 * scale, 4 * scale), // Aumentato da 10 e 3
-      p3: getGridPoints(PARTICLE_COUNT, 16 * scale), // Aumentato da 14
-      p4: getVortexPoints(PARTICLE_COUNT, 10 * scale, 14 * scale), // Forge vortex — wider ring, shorter height
-      p5: getSingularityPoints(PARTICLE_COUNT, 8 * scale), // Contact singularity — very dense and relatively small
-      pRnd: getRandomAttributes(PARTICLE_COUNT)
+      p1: getSpherePoints(particleCount, 10 * scale),
+      p2: getTorusPoints(particleCount, 12 * scale, 4 * scale),
+      p3: getGridPoints(particleCount, 16 * scale),
+      p4: getVortexPoints(particleCount, 10 * scale, 14 * scale),
+      p5: getSingularityPoints(particleCount, 8 * scale),
+      pRnd: getRandomAttributes(particleCount)
     }
-  }, [isMobile])
+  }, [isMobile, particleCount])
 
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
@@ -470,7 +468,8 @@ export function MorphParticles({ isMobile }: MorphParticlesProps) {
   }), [])
 
   useFrame((_, delta) => {
-    uniforms.uTime.value += delta
+    const dt = Math.min(delta, 1 / 30)
+    uniforms.uTime.value += dt
     
     const style = document.documentElement.style
     const rawProgress = style.getPropertyValue('--p-morph')   || '0'
@@ -485,7 +484,7 @@ export function MorphParticles({ isMobile }: MorphParticlesProps) {
 
     // Apply continuous rotation and mouse parallax wrapper
     if (groupRef.current) {
-       baseRotationY.current += delta * 0.05
+       baseRotationY.current += dt * 0.05
        groupRef.current.rotation.y = baseRotationY.current + mouseRef.current.x * 0.4
        groupRef.current.rotation.x = -mouseRef.current.y * 0.3
     }
@@ -495,12 +494,12 @@ export function MorphParticles({ isMobile }: MorphParticlesProps) {
     <group ref={groupRef}>
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" count={PARTICLE_COUNT} array={p1} itemSize={3} />
-          <bufferAttribute attach="attributes-aPosition2" count={PARTICLE_COUNT} array={p2} itemSize={3} />
-          <bufferAttribute attach="attributes-aPosition3" count={PARTICLE_COUNT} array={p3} itemSize={3} />
-          <bufferAttribute attach="attributes-aPosition4" count={PARTICLE_COUNT} array={p4} itemSize={3} />
-          <bufferAttribute attach="attributes-aPosition5" count={PARTICLE_COUNT} array={p5} itemSize={3} />
-          <bufferAttribute attach="attributes-aRandom" count={PARTICLE_COUNT} array={pRnd} itemSize={3} />
+          <bufferAttribute attach="attributes-position" count={particleCount} array={p1} itemSize={3} />
+          <bufferAttribute attach="attributes-aPosition2" count={particleCount} array={p2} itemSize={3} />
+          <bufferAttribute attach="attributes-aPosition3" count={particleCount} array={p3} itemSize={3} />
+          <bufferAttribute attach="attributes-aPosition4" count={particleCount} array={p4} itemSize={3} />
+          <bufferAttribute attach="attributes-aPosition5" count={particleCount} array={p5} itemSize={3} />
+          <bufferAttribute attach="attributes-aRandom" count={particleCount} array={pRnd} itemSize={3} />
         </bufferGeometry>
         <shaderMaterial 
           vertexShader={vertexShader}
