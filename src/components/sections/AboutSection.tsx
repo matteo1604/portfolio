@@ -97,7 +97,7 @@ export function AboutSection() {
       )
     }
     
-    // Manage Pointer Events and Exit Opacity
+    // Manage Pointer Events
     ScrollTrigger.create({
       trigger: '#global-scroll-track',
       start: '12% top',
@@ -109,21 +109,35 @@ export function AboutSection() {
       }
     })
 
-    // Entry Transition (12% to 16%)
-    gsap.fromTo(sectionRef.current, 
-       { clipPath: 'circle(0% at 50% 50%)', opacity: 0 }, 
-       { clipPath: 'circle(150% at 50% 50%)', opacity: 1, ease: 'power2.inOut', 
-         scrollTrigger: { trigger: '#global-scroll-track', start: '12% top', end: '16% top', scrub: true } 
+    // Entry clipPath (12% to 16%) — opacity handled by direct-write ST below
+    gsap.fromTo(sectionRef.current,
+       { clipPath: 'circle(0% at 50% 50%)' },
+       { clipPath: 'circle(150% at 50% 50%)', ease: 'power2.inOut',
+         scrollTrigger: { trigger: '#global-scroll-track', start: '12% top', end: '16% top', scrub: true }
        }
     )
 
-    // Exit Transition (40% to 42%)
-    gsap.fromTo(sectionRef.current, 
-       { opacity: 1 }, 
-       { opacity: 0, ease: 'power2.inOut', immediateRender: false,
-         scrollTrigger: { trigger: '#global-scroll-track', start: '40% top', end: '42% top', scrub: true } 
-       }
-    )
+    // Entry opacity 0→1 (12% to 16%)
+    ScrollTrigger.create({
+      trigger: '#global-scroll-track',
+      start: '12% top',
+      end: '16% top',
+      scrub: true,
+      onUpdate: (self) => {
+         if (sectionRef.current) sectionRef.current.style.opacity = String(self.progress)
+      }
+    })
+
+    // Exit opacity 1→0 (40% to 42%)
+    ScrollTrigger.create({
+      trigger: '#global-scroll-track',
+      start: '40% top',
+      end: '42% top',
+      scrub: true,
+      onUpdate: (self) => {
+         if (sectionRef.current) sectionRef.current.style.opacity = String(1 - self.progress)
+      }
+    })
 
 
     if (prefersReducedMotion) {
@@ -212,54 +226,34 @@ export function AboutSection() {
       })
     }
 
-    const switchToGrid = () => {
-      document.documentElement.style.setProperty('--p-flash', '1')
-      setTimeout(() => document.documentElement.style.setProperty('--p-flash', '0'), 150)
-      
-      const currentMorph = parseFloat(document.documentElement.style.getPropertyValue('--p-morph') || '0')
-      const currentScale = parseFloat(document.documentElement.style.getPropertyValue('--p-scale') || '0.7')
-      const currentZ = parseFloat(document.documentElement.style.getPropertyValue('--p-z') || '0')
-      const currentOpacity = parseFloat(document.documentElement.style.getPropertyValue('--p-opacity') || '1')
-      
-      const proxy = { morph: currentMorph, scale: currentScale, z: currentZ, opacity: currentOpacity }
-      gsap.to(proxy, {
-          morph: 2.0, // Force Grid Phase
-          scale: 2.5, // Gigantic layout to wrap IDE
-          z: -10, // Back off to behave as background
-          opacity: 0.15, // Extremely faint subtle dust
-          duration: 2.0, 
-          ease: 'expo.out',
-          overwrite: 'auto',
-          onUpdate: () => {
-              document.documentElement.style.setProperty('--p-morph', String(proxy.morph))
-              document.documentElement.style.setProperty('--p-scale', String(proxy.scale))
-              document.documentElement.style.setProperty('--p-z', String(proxy.z))
-              document.documentElement.style.setProperty('--p-opacity', String(proxy.opacity))
-          }
-      })
-    }
-    
-    const revertToHero = () => {
-      const currentMorph = parseFloat(document.documentElement.style.getPropertyValue('--p-morph') || '2.0')
-      const currentScale = parseFloat(document.documentElement.style.getPropertyValue('--p-scale') || '2.5')
-      
-      const proxy = { morph: currentMorph, scale: currentScale, z: -10, opacity: 0.15 }
-      gsap.to(proxy, {
-          morph: 0, // Force Sphere
-          scale: 0.7, // End of Hero scaling
-          z: 0,
-          opacity: 1.0,
-          duration: 1.5, 
-          ease: 'power3.inOut',
-          overwrite: 'auto',
-          onUpdate: () => {
-              document.documentElement.style.setProperty('--p-morph', String(proxy.morph))
-              document.documentElement.style.setProperty('--p-scale', String(proxy.scale))
-              document.documentElement.style.setProperty('--p-z', String(proxy.z))
-              document.documentElement.style.setProperty('--p-opacity', String(proxy.opacity))
-          }
-      })
-    }
+    // Scrubbed morph sphere(0) → grid(2) during entry. Opacity 1 → 0.6.
+    // Fires flash once at mid-cross.
+    let flashFired = false
+    ScrollTrigger.create({
+      trigger: '#global-scroll-track',
+      start: '12% top',
+      end: '16% top',
+      scrub: true,
+      onUpdate: (self) => {
+        const eased = gsap.parseEase('power2.inOut')(self.progress)
+        document.documentElement.style.setProperty('--p-morph',   String(eased * 2.0))
+        document.documentElement.style.setProperty('--p-opacity', String(1.0 - eased * 0.4))
+
+        if (self.progress > 0.4 && self.progress < 0.7 && !flashFired) {
+          flashFired = true
+          document.documentElement.style.setProperty('--p-flash', '1')
+          setTimeout(() => document.documentElement.style.setProperty('--p-flash', '0'), 150)
+        }
+        if (self.progress < 0.2 || self.progress > 0.8) flashFired = false
+      }
+    })
+
+    const skewSetters = stageRefs.current.map(el =>
+      el ? gsap.quickTo(el, 'skewY', { duration: 0.4, ease: 'power3.out' }) : null
+    )
+    const ySetters = stageRefs.current.map(el =>
+      el ? gsap.quickTo(el, 'y', { duration: 0.4, ease: 'power3.out' }) : null
+    )
 
     const tl = gsap.timeline({
       scrollTrigger: {
@@ -267,27 +261,15 @@ export function AboutSection() {
         start: '16% top',
         end: '40% top',
         scrub: 1,
-        onEnter: switchToGrid,
-        onEnterBack: switchToGrid,
-        onLeaveBack: revertToHero,
         onUpdate: (self) => {
           scrollProgressRef.current = self.progress
-          
-          // --- GLOBAL PARTICLE TRACKING ---
-          // Pan the grid mechanically based on scroll reading
-          document.documentElement.style.setProperty('--p-x', String(-self.progress * 12))
-          document.documentElement.style.setProperty('--p-y', String(-5 + self.progress * 10))
-          
+
           if (!prefersReducedMotion) {
-            // Apply a slight physical skew to all text stages based on scroll velocity
-            const velocity = self.getVelocity()
-            gsap.to(stageRefs.current, {
-              skewY: velocity / -1000, // adjust divisor for intensity
-              y: velocity / 500,
-              ease: 'power3.out',
-              duration: 0.5,
-              overwrite: 'auto'
-            })
+            const v = self.getVelocity()
+            const skew = v / -1000
+            const yv = v / 500
+            skewSetters.forEach(s => s?.(skew))
+            ySetters.forEach(s => s?.(yv))
           }
         }
       }

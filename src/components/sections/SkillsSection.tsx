@@ -52,141 +52,87 @@ export function SkillsSection() {
       // Use CSS height of section instead of JS window calculations
       // Section is set to 400vh below.
 
-      // --- INITIAL STATE SETUP ---
-      // Apply the `progress = 0` configuration instantly so elements are positioned correctly
-      // when sliding into the viewport (preventing 'FRONTEND ARCHITECTURE' from being clipped
-      // and snapping into view).
-      const initProgress = 0;
-      if (listRef.current) {
-         const shiftY = (0.5 - initProgress) * (isMobile ? 240 : 380)
-         gsap.set(listRef.current, { y: shiftY })
-      }
-      
-      textRefs.current.forEach((el, index) => {
-        if (!el) return
-        const center = index * 0.5
-        const dist = Math.abs(initProgress - center)
-        const intensity = Math.max(0, 1.0 - dist * 3.5)
-        const easeIntensity = gsap.parseEase("power3.out")(intensity)
-        const highlightColor = intensity > 0.5 ? 'var(--text-primary)' : 'var(--text-secondary)'
-        
-        gsap.set(el, {
-           opacity: Math.max(0.1, intensity),
-           color: highlightColor,
-           x: isMobile ? 0 : easeIntensity * 30,
-           scale: 1.0 + easeIntensity * 0.05,
-           filter: `blur(${(1.0 - intensity) * 2}px)`
-        })
-      })
+      // --- Pre-created quickSetters per item (single DOM-binding, reusable each tick) ---
+      const listYSet = listRef.current ? gsap.quickSetter(listRef.current, 'y', 'px') : null
+      const itemSetters = textRefs.current.map(el => el ? {
+        opacity: gsap.quickSetter(el, 'opacity'),
+        x:       gsap.quickSetter(el, 'x', 'px'),
+        scale:   gsap.quickSetter(el, 'scale'),
+        filter:  gsap.quickSetter(el, 'filter'),
+        color:   gsap.quickSetter(el, 'color'),
+      } : null)
+      const ease = gsap.parseEase('power3.out')
 
-      // --- CONTINUOUS WHEEL PHYSICS: ABOUT -> SKILLS TRANSITION ---
+      const applyItemsAt = (progress: number) => {
+        textRefs.current.forEach((el, index) => {
+          if (!el) return
+          const s = itemSetters[index]
+          if (!s) return
+          const center = index * 0.5
+          const dist = Math.abs(progress - center)
+          const intensity = Math.max(0, 1.0 - dist * 3.5)
+          const easeIntensity = ease(intensity)
+          s.opacity(Math.max(0.1, intensity))
+          s.color(intensity > 0.5 ? 'var(--text-primary)' : 'var(--text-secondary)')
+          s.x(isMobile ? 0 : easeIntensity * 30)
+          s.scale(1.0 + easeIntensity * 0.05)
+          s.filter(`blur(${(1.0 - intensity) * 2}px)`)
+        })
+      }
+
+      // --- INITIAL STATE SETUP ---
+      if (listYSet) listYSet((0.5 - 0) * (isMobile ? 240 : 380))
+      applyItemsAt(0)
+
+      // --- ENTRY 40→42% : crossfade sync'd with About exit (40→42) ---
       ScrollTrigger.create({
         trigger: '#global-scroll-track',
-        start: '38% top',
+        start: '40% top',
         end: '42% top',
         scrub: true,
         onUpdate: (self) => {
           if (containerRef.current) {
-             containerRef.current.style.opacity = String(self.progress);
-             containerRef.current.style.pointerEvents = self.progress > 0.5 ? 'auto' : 'none';
+             containerRef.current.style.opacity = String(self.progress)
+             containerRef.current.style.pointerEvents = self.progress > 0.5 ? 'auto' : 'none'
           }
-          // Interpolate Morph: Grid (2.0) -> Sphere (0.0)
-          document.documentElement.style.setProperty('--p-morph', String(2.0 - self.progress * 2.0))
-          
-          // Interpolate Scale: Massive background (2.5) -> Normal (1.2 / 0.8)
-          const targetScale = isMobile ? 0.8 : 1.2
-          const scale = 2.5 - (self.progress * (2.5 - targetScale))
-          document.documentElement.style.setProperty('--p-scale', String(scale))
-          
-          // Interpolate Depth: Background (-10) -> Foreground (0)
-          const z = -10 + (self.progress * 10)
-          document.documentElement.style.setProperty('--p-z', String(z))
-          
-          // Interpolate Opacity: Faint (0.15) -> Solid (1.0)
-          const opacity = 0.15 + (self.progress * 0.85)
-          document.documentElement.style.setProperty('--p-opacity', String(opacity))
-          
-          // Interpolate Position Y: Slightly low (5) -> Centered (0)
-          const y = 5 - (self.progress * 5)
-          document.documentElement.style.setProperty('--p-y', String(y))
-          
-          // Interpolate Position X: Offset Left (-12 or -5) -> Target Right (12 or 0)
-          const startX = isMobile ? -5 : -12
-          const targetX = isMobile ? 0 : 12
-          const x = startX + (self.progress * (targetX - startX))
-          document.documentElement.style.setProperty('--p-x', String(x))
+          document.documentElement.style.setProperty('--p-opacity', String(0.6 + self.progress * 0.4))
         }
       })
-      
+
+      // --- ANIMATION 42→70% : list/text only. No morph writes — morph stays at 2.0 (grid) ---
       ScrollTrigger.create({
         trigger: '#global-scroll-track',
         start: '42% top',
         end: '70% top',
         scrub: 0.5,
         onUpdate: (self) => {
-          // --- GLOBAL PARTICLE TRACKING ---
-          const targetShaderState = self.progress * 2.0
-          document.documentElement.style.setProperty('--p-morph', String(targetShaderState))
-          document.documentElement.style.setProperty('--p-opacity', '1') // Restore full brightness
-          document.documentElement.style.setProperty('--p-z', '0') // Bring back to front
-          document.documentElement.style.setProperty('--p-y', '0') // Center vertically
-          document.documentElement.style.setProperty('--p-scale', isMobile ? '0.8' : '1.2')
-          document.documentElement.style.setProperty('--p-x', isMobile ? '0' : '12') // Push right on desktop
-          
-          // Flash Trigger Math: pulse the GlobalCanvas Bloom when state locks in
-          const activeIndex = Math.round(targetShaderState)
+          const p = self.progress
+
+          // Flash on segment lock-in (map progress → 0..2 index)
+          const activeIndex = Math.round(p * 2.0)
           if (activeIndex !== lastActiveRef.current) {
              lastActiveRef.current = activeIndex
              document.documentElement.style.setProperty('--p-flash', '1')
-             // Reset quickly to allow future triggers
              setTimeout(() => document.documentElement.style.setProperty('--p-flash', '0'), 100)
           }
-          
-          // Auto-Center Layout: Shifts the text list up/down dynamically
-          if (listRef.current) {
-             // Calculate optical shift. Approx 380px is the total span between first and last item on desktop.
-             const shiftY = (0.5 - self.progress) * (isMobile ? 240 : 380)
-             gsap.set(listRef.current, { y: shiftY })
-          }
-          
-          // Animate text blocks opacity based on segments
-          // segment 0 = 0 to 0.33
-          // segment 1 = 0.33 to 0.66
-          // segment 2 = 0.66 to 1.0
-          
-          textRefs.current.forEach((el, index) => {
-            if (!el) return
-            
-            // Define active zone for this block
-            const center = index * 0.5 // 0.0, 0.5, 1.0
-            
-            // Distance from current scroll progress to the block's ideal center point
-            const dist = Math.abs(self.progress - center)
-            
-            // Smooth curve for geometric transformations
-            const intensity = Math.max(0, 1.0 - dist * 3.5)
-            const easeIntensity = gsap.parseEase("power3.out")(intensity)
-            
-            const highlightColor = intensity > 0.5 ? 'var(--text-primary)' : 'var(--text-secondary)'
-            
-            gsap.set(el, {
-               opacity: Math.max(0.1, intensity),
-               color: highlightColor,
-               x: isMobile ? 0 : easeIntensity * 30, // Smooth continuous slide forward
-               scale: 1.0 + easeIntensity * 0.05,    // Smooth continuous scaling
-               filter: `blur(${(1.0 - intensity) * 2}px)` // Cinematic depth of field
-            })
-          })
+
+          if (listYSet) listYSet((0.5 - p) * (isMobile ? 240 : 380))
+          applyItemsAt(p)
         }
       })
-      
-      // Exit Transition (70% to 72%)
-      gsap.fromTo(containerRef.current,
-         { opacity: 1 },
-         { opacity: 0, ease: 'power2.inOut', immediateRender: false,
-           scrollTrigger: { trigger: '#global-scroll-track', start: '70% top', end: '72% top', scrub: true }
-         }
-      )
+
+      // --- EXIT 70→72% : fade-out section via direct-write (same pattern as entry) ---
+      ScrollTrigger.create({
+        trigger: '#global-scroll-track',
+        start: '70% top',
+        end: '72% top',
+        scrub: true,
+        onUpdate: (self) => {
+          if (containerRef.current) {
+             containerRef.current.style.opacity = String(1 - self.progress)
+          }
+        }
+      })
     },
     { scope: containerRef, dependencies: [prefersReducedMotion, isMobile] }
   )

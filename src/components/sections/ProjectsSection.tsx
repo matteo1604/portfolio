@@ -131,50 +131,23 @@ export function ProjectsSection() {
           // Morph: Grid (2.0) → Vortex (3.0)
           const morph = 2.0 + self.progress * 1.0
           document.documentElement.style.setProperty('--p-morph', String(morph))
-
-          // Position: Move from Skills right-side (12, 0) to center (0, 0)
-          const startX = isMobile ? 0 : 12
-          const x = startX * (1 - self.progress)
-          document.documentElement.style.setProperty('--p-x', String(x))
-          document.documentElement.style.setProperty('--p-y', '0')
-
-          // Scale: Compact vortex as atmospheric background behind capsule
-          const targetScale = isMobile ? 0.35 : 0.5
-          const startScale = isMobile ? 0.8 : 1.2
-          const scale = startScale + (targetScale - startScale) * self.progress
-          document.documentElement.style.setProperty('--p-scale', String(scale))
-
-          // Opacity: Dim slightly so text remains readable
           const opacity = 1.0 - self.progress * 0.35
           document.documentElement.style.setProperty('--p-opacity', String(opacity))
-          document.documentElement.style.setProperty('--p-z', '0')
         },
       })
 
-      // ── PARTICLE STATE WHILE IN SECTION ─────────────────────────────
-      // Keep the vortex state stable while the user is viewing the section
+      // Bloom flash at vortex lock-in (once per direction crossing)
       ScrollTrigger.create({
         trigger: '#global-scroll-track',
-        start: '72% top',
-        end: '90% top',
+        start: '73% top',
+        end: '74% top',
         onEnter: () => {
-          document.documentElement.style.setProperty('--p-morph', '3')
-          document.documentElement.style.setProperty('--p-x', '0')
-          document.documentElement.style.setProperty('--p-y', '0')
-          document.documentElement.style.setProperty('--p-scale', isMobile ? '0.35' : '0.5')
-          document.documentElement.style.setProperty('--p-opacity', '0.65')
-          document.documentElement.style.setProperty('--p-z', '0')
-          // Flash on entering
           document.documentElement.style.setProperty('--p-flash', '1')
           setTimeout(() => document.documentElement.style.setProperty('--p-flash', '0'), 150)
         },
         onEnterBack: () => {
-          document.documentElement.style.setProperty('--p-morph', '3')
-          document.documentElement.style.setProperty('--p-x', '0')
-          document.documentElement.style.setProperty('--p-y', '0')
-          document.documentElement.style.setProperty('--p-scale', isMobile ? '0.35' : '0.5')
-          document.documentElement.style.setProperty('--p-opacity', '0.65')
-          document.documentElement.style.setProperty('--p-z', '0')
+          document.documentElement.style.setProperty('--p-flash', '1')
+          setTimeout(() => document.documentElement.style.setProperty('--p-flash', '0'), 150)
         },
       })
 
@@ -268,13 +241,16 @@ export function ProjectsSection() {
         }
       )
       
-      // Exit Transition (90% to 92%)
-      gsap.fromTo(sectionRef.current,
-         { opacity: 1 },
-         { opacity: 0, ease: 'power2.inOut', immediateRender: false,
-           scrollTrigger: { trigger: '#global-scroll-track', start: '90% top', end: '92% top', scrub: true }
-         }
-      )
+      // Exit opacity 1→0 (90% to 92%) — direct-write for clean handoff with Contact entry
+      ScrollTrigger.create({
+        trigger: '#global-scroll-track',
+        start: '90% top',
+        end: '92% top',
+        scrub: true,
+        onUpdate: (self) => {
+          if (sectionRef.current) sectionRef.current.style.opacity = String(1 - self.progress)
+        }
+      })
     },
     { scope: sectionRef, dependencies: [prefersReducedMotion, isMobile] }
   )

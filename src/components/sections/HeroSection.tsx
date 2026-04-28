@@ -155,6 +155,13 @@ export function HeroSection() {
     () => {
       if (!sectionRef.current) return
 
+      const skewContent = contentRef.current
+        ? gsap.quickTo(contentRef.current, 'skewY', { duration: 0.4, ease: 'power3.out' })
+        : null
+      const skewCta = ctaWrapperRef.current
+        ? gsap.quickTo(ctaWrapperRef.current, 'skewY', { duration: 0.4, ease: 'power3.out' })
+        : null
+
       ScrollTrigger.create({
         trigger: '#global-scroll-track',
         start: '0% top',
@@ -163,34 +170,20 @@ export function HeroSection() {
         onUpdate: (self) => {
           document.documentElement.style.setProperty('--hero-progress', String(self.progress))
           document.documentElement.style.setProperty('--hero-progress-pct', `${self.progress * 100}%`)
-          
+
           if (sectionRef.current) {
              sectionRef.current.style.pointerEvents = self.progress > 0.95 ? 'none' : 'auto'
           }
-          
-          // --- GLOBAL PARTICLE TRACKING ---
-          // Hero owns the scroll from 0 to 1.
-          document.documentElement.style.setProperty('--p-y', String(self.progress * -15)) // Move down
-          document.documentElement.style.setProperty('--p-scale', String(1.0 - self.progress * 0.3)) // Scale down slightly
-          // Hero is strictly the initial Sphere (Morph state 0)
-          document.documentElement.style.setProperty('--p-morph', '0')
-          document.documentElement.style.setProperty('--p-opacity', '1')
-          
+
           if (!prefersReducedMotion) {
-            const velocity = self.getVelocity()
-            gsap.to([contentRef.current, ctaWrapperRef.current], {
-              skewY: velocity / -1000,
-              ease: 'power3.out',
-              duration: 0.5,
-              overwrite: 'auto'
-            })
+            const v = self.getVelocity() / -1000
+            skewContent?.(v)
+            skewCta?.(v)
           }
         },
         onLeaveBack: () => {
           document.documentElement.style.setProperty('--hero-progress', '0')
           document.documentElement.style.setProperty('--hero-progress-pct', '0%')
-          document.documentElement.style.setProperty('--p-y', '0')
-          document.documentElement.style.setProperty('--p-scale', '1')
         },
       })
 

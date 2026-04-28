@@ -373,17 +373,7 @@ export function ContactSection() {
             }
             const morph = 3.0 + self.progress * 1.0
             document.documentElement.style.setProperty('--p-morph', String(morph))
-            document.documentElement.style.setProperty('--p-x', '0')
-            document.documentElement.style.setProperty('--p-y', '0')
-
-            const targetScale = isMobile ? 0.6 : 0.9
-            const startScale = isMobile ? 0.35 : 0.5 
-            const scale = startScale + (targetScale - startScale) * self.progress
-            document.documentElement.style.setProperty('--p-scale', String(scale))
-
-            const targetOpacity = 0.95
-            const startOpacity = 0.65 
-            const opacity = startOpacity + (targetOpacity - startOpacity) * self.progress
+            const opacity = 0.65 + (0.95 - 0.65) * self.progress
             document.documentElement.style.setProperty('--p-opacity', String(opacity))
           },
         })

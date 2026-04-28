@@ -1,6 +1,7 @@
-import { useRef, useMemo, useEffect } from 'react'
+import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useMouseNDC } from '@/hooks/useMouseNDC'
 
 interface MorphParticlesProps {
   isMobile?: boolean
@@ -295,8 +296,7 @@ const vertexShader = `
     // Default Spherical Push
     vec3 pushDir = normalize(posBase); 
     
-    // FrontEnd: Scanner breathing
-    float scanner = smoothstep(0.9, 1.0, sin(posBase.y * 0.5 - uTime * 3.0));
+    // FrontEnd: gentle breathing (removed horizontal scan-line artifact)
     float isFrontend = 1.0 - smoothstep(0.0, 1.0, state);
     
     // WebGL: Gravity well (pull instead of push)
@@ -362,7 +362,8 @@ const vertexShader = `
     float vortexSize = mix(0.0, smoothstep(3.0, 0.0, centerDist) * 2.0, t3);
     float singularitySize = mix(0.0, smoothstep(2.0, 0.0, centerDist) * 4.0 + (aRandom.y * 3.0), t4);
     
-    gl_PointSize = (3.0 + aRandom.x * 6.0 + scanner * 12.0 * isFrontend + vortexSize + singularitySize) * uPixelRatio * (20.0 / -mvPosition.z);
+    float frontendPulse = (0.5 + 0.5 * sin(uTime * 1.2 + aRandom.x * 6.28)) * isFrontend * 2.0;
+    gl_PointSize = (3.0 + aRandom.x * 6.0 + frontendPulse + vortexSize + singularitySize) * uPixelRatio * (20.0 / -mvPosition.z);
   }
 `
 
@@ -445,18 +446,7 @@ export function MorphParticles({ isMobile }: MorphParticlesProps) {
   const groupRef = useRef<THREE.Group>(null)
   const baseRotationY = useRef(0)
   const mouseRef = useRef(new THREE.Vector2(0, 0))
-  const targetMouseRef = useRef(new THREE.Vector2(0, 0))
-
-  useEffect(() => {
-    // Only apply active tracking on desktop/large screens
-    if (isMobile) return
-    const onMove = (e: PointerEvent) => {
-      targetMouseRef.current.x = (e.clientX / window.innerWidth) * 2 - 1
-      targetMouseRef.current.y = -(e.clientY / window.innerHeight) * 2 + 1
-    }
-    window.addEventListener('pointermove', onMove)
-    return () => window.removeEventListener('pointermove', onMove)
-  }, [isMobile])
+  const mouseNDC = useMouseNDC()
 
   const { p1, p2, p3, p4, p5, pRnd } = useMemo(() => {
     // Aumentato lo scale base da 1.0 a 1.4 per desktop
@@ -482,33 +472,15 @@ export function MorphParticles({ isMobile }: MorphParticlesProps) {
   useFrame((_, delta) => {
     uniforms.uTime.value += delta
     
-    // Read the CSS variables driven by the sections' GSAP ScrollTriggers globally
     const style = document.documentElement.style
-    const rawProgress = style.getPropertyValue('--p-morph') || '0'
-    const rawOpacity = style.getPropertyValue('--p-opacity') || '1'
-    const rawX = style.getPropertyValue('--p-x') || '0'
-    const rawY = style.getPropertyValue('--p-y') || '0'
-    const rawZ = style.getPropertyValue('--p-z') || '0'
-    const rawScale = style.getPropertyValue('--p-scale') || '1'
+    const rawProgress = style.getPropertyValue('--p-morph')   || '0'
+    const rawOpacity  = style.getPropertyValue('--p-opacity') || '1'
 
-    // Smooth lerp for uniforms
     uniforms.uProgress.value += (parseFloat(rawProgress) - uniforms.uProgress.value) * 0.1
-    uniforms.uOpacity.value += (parseFloat(rawOpacity) - uniforms.uOpacity.value) * 0.1
-
-    // Apply physical transform tracking to the Group
-    if (groupRef.current) {
-        groupRef.current.position.x += (parseFloat(rawX) - groupRef.current.position.x) * 0.1
-        groupRef.current.position.y += (parseFloat(rawY) - groupRef.current.position.y) * 0.1
-        groupRef.current.position.z += (parseFloat(rawZ) - groupRef.current.position.z) * 0.1
-        
-        const targetScale = parseFloat(rawScale)
-        groupRef.current.scale.x += (targetScale - groupRef.current.scale.x) * 0.1
-        groupRef.current.scale.y += (targetScale - groupRef.current.scale.y) * 0.1
-        groupRef.current.scale.z += (targetScale - groupRef.current.scale.z) * 0.1
-    }
+    uniforms.uOpacity.value  += (parseFloat(rawOpacity)  - uniforms.uOpacity.value)  * 0.1
     
-    // Interactive lerp for mouse and parallax
-    mouseRef.current.lerp(targetMouseRef.current, 0.1)
+    // Interactive lerp for mouse and parallax — desktop only
+    if (!isMobile) mouseRef.current.lerp(mouseNDC.current, 0.1)
     uniforms.uMouse.value.copy(mouseRef.current)
 
     // Apply continuous rotation and mouse parallax wrapper
